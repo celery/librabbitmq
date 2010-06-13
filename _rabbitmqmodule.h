@@ -1,6 +1,13 @@
 #ifndef __PYLIBRABBIT_H__
 #define __PYLIBRABBIT_H__
 
+#ifdef PY25
+#  define PY_SSIZE_T_CLEAN
+#  define PY_SIZE_TYPE Py_ssize_t
+#else
+#  define PY_SIZE_TYPE int
+#endif
+
 #include <Python.h>
 
 #include <amqp.h>

@@ -101,19 +101,20 @@ static PyObject *PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self
     int mandatory = 0;
     int immediate = 0;
     char *message = 0;
+    PY_SIZE_TYPE message_size;
 
     static char *kwlist[] = {"exchange", "routing_key", "message",
                              "channel", "mandatory", "immediate", NULL};
-    if (PyArg_ParseTupleAndKeywords(args, kwargs, "sss|iii", kwlist,
-                &exchange, &routing_key, &message, &channel, &mandatory,
-                &immediate)) {
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "sss#|iii", kwlist,
+                &exchange, &routing_key, &message, &message_size, &channel,
+                &mandatory, &immediate)) {
         amqp_basic_publish(self->conn, channel,
                            amqp_cstring_bytes(exchange),
                            amqp_cstring_bytes(routing_key),
                            (amqp_boolean_t)mandatory,
                            (amqp_boolean_t)immediate,
                            NULL,
-                           (amqp_bytes_t){.len = sizeof(message), .bytes=message});
+                           (amqp_bytes_t){.len = message_size, .bytes=message});
     }
 
     Py_RETURN_NONE;
