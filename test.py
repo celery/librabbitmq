@@ -15,6 +15,12 @@ class TestChannel(unittest.TestCase):
                 content_type="application/json",
                 content_encoding="utf-8")
         self.channel.basic_publish(message, "celery", "celery")
+        self.channel.basic_publish(message, "celery", "celery")
+        self.channel.basic_publish(message, "celery", "celery")
+        self.assertGreater(self.channel.queue_purge("celery"), 2)
+        self.channel.basic_publish(message, "celery", "celery")
+        self.channel.basic_publish(message, "celery", "celery")
+        self.channel.basic_publish(message, "celery", "celery")
 
     def test_exchange_declare(self):
         self.channel.exchange_declare("tesxxx", "direct")

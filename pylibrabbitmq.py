@@ -43,6 +43,9 @@ class Channel(object):
                 mandatory=mandatory,
                 immediate=immediate)
 
+    def queue_purge(self, queue, no_wait=False):
+        return self.conn._queue_purge(queue, no_wait, self.chanid)
+
     def exchange_declare(self, exchange="", exchange_type="direct",
             passive=False, durable=False, auto_delete=False):
         return self.conn._exchange_declare(exchange, exchange_type,

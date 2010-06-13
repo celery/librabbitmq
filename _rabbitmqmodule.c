@@ -332,6 +332,38 @@ error:
     return 0;
 }
 
+/* queue_purge */
+static PyObject *PyRabbitMQ_Connection_queue_purge(PyRabbitMQ_Connection *self,
+        PyObject *args, PyObject *kwargs) {
+    char *queue = NULL;
+    int channel, no_wait;
+    amqp_queue_purge_ok_t *ok;
+    amqp_rpc_reply_t reply;
+
+    static char *kwlist[] = {"queue", "no_wait", "channel", NULL};
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "sii", kwlist,
+                &queue, &no_wait, &channel)) {
+        ok = amqp_queue_purge(self->conn, channel,
+                           amqp_cstring_bytes(queue),
+                           (amqp_boolean_t)no_wait);
+        reply = amqp_get_rpc_reply(self->conn);
+        if (!PyRabbitMQ_handle_amqp_error(reply,
+                    "queue.purge", PyRabbitMQExc_ChannelError))
+            goto error;
+        PyObject *message_count = PyInt_FromLong((long)ok->message_count);
+        Py_INCREF(message_count);
+        return message_count;
+    }
+    else {
+        goto error;
+    }
+
+    Py_RETURN_NONE;
+
+error:
+    return 0;
+}
+
 /* exchange_declare */
 static PyObject *PyRabbitMQ_Connection_exchange_declare(PyRabbitMQ_Connection *self,
         PyObject *args, PyObject *kwargs) {
