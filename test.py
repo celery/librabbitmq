@@ -23,6 +23,10 @@ class TestChannel(unittest.TestCase):
         self.channel.queue_declare("tesxxx")
         self.channel.queue_bind("tesxxx", "tesxxx", "rkey")
 
+    def test_basic_get(self):
+        x = self.channel.basic_get("celery")
+        raise Exception(x)
+
     def tearDown(self):
         self.channel.close()
         self.connection.close()

@@ -224,6 +224,7 @@ void PyDict_to_basic_properties(PyObject *p, amqp_basic_properties_t *props) {
 
 
 }
+
 /* queue_bind */
 static PyObject *PyRabbitMQ_Connection_queue_bind(PyRabbitMQ_Connection *self,
         PyObject *args, PyObject *kwargs) {
@@ -243,6 +244,37 @@ static PyObject *PyRabbitMQ_Connection_queue_bind(PyRabbitMQ_Connection *self,
                            arguments);
         if (!PyRabbitMQ_handle_amqp_error(amqp_get_rpc_reply(self->conn),
                     "Queue bind", PyRabbitMQExc_ChannelError))
+            goto error;
+    }
+    else {
+        goto error;
+    }
+
+    Py_RETURN_NONE;
+
+error:
+    return 0;
+}
+
+/* queue_unbind */
+static PyObject *PyRabbitMQ_Connection_queue_unbind(PyRabbitMQ_Connection *self,
+        PyObject *args, PyObject *kwargs) {
+    char *queue = NULL;
+    char *exchange = NULL;
+    char *binding_key = NULL;
+    int channel;
+    amqp_table_t arguments = AMQP_EMPTY_TABLE;
+
+    static char *kwlist[] = {"queue", "exchange", "binding_key", "channel", NULL};
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "sssi", kwlist,
+                &queue, &exchange, &binding_key, &channel)) {
+        amqp_queue_unbind(self->conn, channel,
+                           amqp_cstring_bytes(queue),
+                           amqp_cstring_bytes(exchange),
+                           amqp_cstring_bytes(binding_key),
+                           arguments);
+        if (!PyRabbitMQ_handle_amqp_error(amqp_get_rpc_reply(self->conn),
+                    "Queue unbind", PyRabbitMQExc_ChannelError))
             goto error;
     }
     else {
@@ -365,6 +397,53 @@ error:
     return 0;
 }
 
+/* basic_get */
+static PyObject *PyRabbitMQ_Connection_basic_get(PyRabbitMQ_Connection *self,
+        PyObject *args, PyObject *kwargs) {
+    char *queue = NULL;
+    int noack = 0;
+    int channel = 0;
+    amqp_rpc_reply_t reply;
+
+    static char *kwlist[] = {"queue", "noack", "channel", NULL};
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "sii", kwlist,
+                &queue, &noack, &channel)) {
+        reply = amqp_basic_get(self->conn, channel,
+                           amqp_cstring_bytes(queue),
+                           noack);
+        if (!PyRabbitMQ_handle_amqp_error(reply,
+                    "basic.get", PyRabbitMQExc_ChannelError))
+            goto error;
+        if (reply.reply.id == AMQP_BASIC_GET_OK_METHOD) {
+            amqp_basic_get_ok_t *ok = (amqp_basic_get_ok_t *)reply.reply.decoded;
+            PyObject *p = PyDict_New();
+            PyDict_SetItemString(p, "delivery_tag",
+                    PyInt_FromLong((long)ok->delivery_tag));
+            PyDict_SetItemString(p, "redelivered",
+                    PyInt_FromLong((long)ok->redelivered));
+            PyDict_SetItemString(p, "exchange",
+                    PyString_FromStringAndSize(ok->exchange.bytes,
+                        ok->exchange.len));
+            PyDict_SetItemString(p, "routing_key",
+                    PyString_FromStringAndSize(ok->routing_key.bytes,
+                        ok->routing_key.len));
+            PyDict_SetItemString(p, "message_count",
+                    PyInt_FromLong((long)ok->message_count));
+
+            // TODO Receive message
+            Py_INCREF(p);
+            return p;
+        }
+    }
+    else {
+        goto error;
+    }
+
+    Py_RETURN_NONE;
+
+error:
+    return 0;
+}
 
 static PyMethodDef PyRabbitMQ_functions[] = {
     {NULL, NULL, 0, NULL}

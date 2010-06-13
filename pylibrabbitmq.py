@@ -30,6 +30,9 @@ class Channel(object):
         self.conn = conn
         self.chanid = chanid
 
+    def basic_get(self, queue="", noack=False):
+        return self.conn._basic_get(queue, noack, self.chanid)
+
     def basic_publish(self, message, exchange="", routing_key="",
             mandatory=False, immediate=False):
         return self.conn._basic_publish(exchange=exchange,
@@ -52,6 +55,9 @@ class Channel(object):
 
     def queue_bind(self, queue="", exchange="", routing_key=""):
         return self.conn._queue_bind(queue, exchange, routing_key, self.chanid)
+
+    def queue_unbind(self, queue="", exchange="", binding_key=""):
+        return self.conn._queue_unbind(queue, exchange, binding_key, self.chanid)
 
     def close(self):
         self.conn._remove_channel(self)

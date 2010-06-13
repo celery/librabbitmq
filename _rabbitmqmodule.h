@@ -51,6 +51,10 @@ static PyObject *PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_queue_bind(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
+static PyObject *PyRabbitMQ_Connection_queue_unbind(PyRabbitMQ_Connection *,
+        PyObject *, PyObject *);
+static PyObject *PyRabbitMQ_Connection_basic_get(PyRabbitMQ_Connection *,
+        PyObject *, PyObject *);
 
 static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
     {"connect", (PyCFunction)PyRabbitMQ_Connection_connect, METH_NOARGS,
@@ -72,7 +76,13 @@ static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
         "Declare a queue"},
     {"_queue_bind", (PyCFunction)PyRabbitMQ_Connection_queue_bind,
         METH_VARARGS|METH_KEYWORDS,
-        "Bind queue to exchange"},
+        "Bind queue"},
+    {"_queue_unbind", (PyCFunction)PyRabbitMQ_Connection_queue_unbind,
+        METH_VARARGS|METH_KEYWORDS,
+        "Unbind queue"},
+    {"_basic_get", (PyCFunction)PyRabbitMQ_Connection_basic_get,
+        METH_VARARGS|METH_KEYWORDS,
+        "basic.get"},
     {NULL, NULL, 0, NULL}
 };
 
