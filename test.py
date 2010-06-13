@@ -20,12 +20,19 @@ class TestChannel(unittest.TestCase):
         self.channel.exchange_declare("tesxxx", "direct")
 
     def test_queue_declare(self):
-        self.channel.queue_declare("tesxxx")
+        x = self.channel.queue_declare("tesxxx")
+        self.assertIn("message_count", x)
+        self.assertIn("consumer_count", x)
+        self.assertEqual(x["queue"], "tesxxx")
         self.channel.queue_bind("tesxxx", "tesxxx", "rkey")
 
     def test_basic_get(self):
         x = self.channel.basic_get("celery")
-        raise Exception(x)
+        self.assertIn("message_count", x)
+        self.assertIn("redelivered", x)
+        self.assertEqual(x["routing_key"], "celery")
+        self.assertEqual(x["exchange"], "celery")
+        self.assertTrue(x["delivery_tag"])
 
     def tearDown(self):
         self.channel.close()

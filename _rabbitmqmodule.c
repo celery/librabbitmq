@@ -292,22 +292,35 @@ static PyObject *PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *self
         PyObject *args, PyObject *kwargs) {
     char *queue = NULL;
     int channel, passive, durable, exclusive, auto_delete;
-    amqp_table_t arguments = AMQP_EMPTY_TABLE;
+    amqp_queue_declare_ok_t *ok;
+    amqp_rpc_reply_t reply;
 
     static char *kwlist[] = {"queue", "channel", "passive", "durable",
                              "exclusive", "auto_delete", NULL}; /* TODO arguments */
     if (PyArg_ParseTupleAndKeywords(args, kwargs, "siiiii", kwlist,
                 &queue, &channel, &passive, &durable, &exclusive, &auto_delete)) {
-        amqp_queue_declare(self->conn, channel,
+        ok = amqp_queue_declare(self->conn, channel,
                            amqp_cstring_bytes(queue),
                            (amqp_boolean_t)passive,
                            (amqp_boolean_t)durable,
                            (amqp_boolean_t)exclusive,
                            (amqp_boolean_t)auto_delete,
-                           arguments);
-        if (!PyRabbitMQ_handle_amqp_error(amqp_get_rpc_reply(self->conn),
-                    "Queue declare", PyRabbitMQExc_ChannelError))
+                           AMQP_EMPTY_TABLE);
+        reply = amqp_get_rpc_reply(self->conn);
+        if (!PyRabbitMQ_handle_amqp_error(reply,
+                    "queue.declare", PyRabbitMQExc_ChannelError))
             goto error;
+        PyObject *p = PyDict_New();
+        PyDict_SetItemString(p, "message_count",
+                PyInt_FromLong((long)ok->message_count));
+        PyDict_SetItemString(p, "consumer_count",
+                PyInt_FromLong((long)ok->consumer_count));
+        PyDict_SetItemString(p, "queue",
+                PyString_FromStringAndSize(ok->queue.bytes,
+                    ok->queue.len));
+
+        Py_INCREF(p);
+        return p;
     }
     else {
         goto error;
