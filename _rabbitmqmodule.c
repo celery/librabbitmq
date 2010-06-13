@@ -7,6 +7,71 @@
 
 #define PYRABBITMQ_VERSION "0.0.1"
 
+int PyRabbitMQ_handle_error(int ret, char const *context) {
+    if (ret < 0) {
+        char errorstr[1024];
+        snprintf(errorstr, sizeof(errorstr), "%s: %s", 
+                context, strerror(-ret));
+        PyErr_SetString(PyRabbitMQExc_ConnectionError, errorstr);
+        return 0;
+    }
+    return 1;
+}
+
+int PyRabbitMQ_handle_amqp_error(amqp_rpc_reply_t reply, char const *context,
+        PyObject *exc_cls) {
+    char errorstr[1024];
+
+    switch (reply.reply_type) {
+        case AMQP_RESPONSE_NORMAL:
+            return 1;
+
+        case AMQP_RESPONSE_NONE:
+            snprintf(errorstr, sizeof(errorstr),
+                    "%s: missing RPC reply type!", context);
+            break;
+
+        case AMQP_RESPONSE_LIBRARY_EXCEPTION:
+            snprintf(errorstr, sizeof(errorstr), "%s: %s",
+                    context,
+                    reply.library_errno
+                        ? strerror(reply.library_errno)
+                        : "(end-of-stream)");
+            break;
+
+        case AMQP_RESPONSE_SERVER_EXCEPTION:
+
+            switch (reply.reply.id) {
+                case AMQP_CONNECTION_CLOSE_METHOD: {
+                    amqp_connection_close_t *m = (amqp_connection_close_t *) reply.reply.decoded;
+                    snprintf(errorstr, sizeof(errorstr),
+                        "%s: server connection error %d, message: %.*s",
+                            context,
+                            m->reply_code,
+                            (int) m->reply_text.len, (char *) m->reply_text.bytes);
+                    break;
+                }
+                case AMQP_CHANNEL_CLOSE_METHOD: {
+                    amqp_channel_close_t *m = (amqp_channel_close_t *) reply.reply.decoded;
+                    snprintf(errorstr, sizeof(errorstr),
+                        "%s: server channel error %d, message: %.*s",
+                            context, m->reply_code,
+                            (int) m->reply_text.len, (char *) m->reply_text.bytes);
+                    break;
+                }
+                default:
+                    snprintf(errorstr, sizeof(errorstr),
+                        "%s: unknown server error, method id 0x%08X",
+                            context, reply.reply.id);
+                    break;
+            }
+            break;
+    }
+    PyErr_SetString(exc_cls, errorstr);
+    return 0;
+}
+
+
 /* __new__ */
 static PyRabbitMQ_Connection* PyRabbitMQ_ConnectionType_new(PyTypeObject *type,
        PyObject *args, PyObject *kwargs) {
@@ -59,41 +124,81 @@ static int PyRabbitMQ_Connection_init(PyRabbitMQ_Connection *self,
 
 /* connect */
 static PyObject *PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self) {
+    amqp_rpc_reply_t reply;
     self->conn = amqp_new_connection();
     self->sockfd = amqp_open_socket(self->hostname, self->port);
+    if (!PyRabbitMQ_handle_error(self->sockfd, "Couldn't open socket"))
+        goto error;
     amqp_set_sockfd(self->conn, self->sockfd);
-    amqp_login(self->conn, "/", 0, 131072, 0, AMQP_SASL_METHOD_PLAIN,
-               "guest", "guest");
+    reply = amqp_login(self->conn, self->vhost, 0, 131072, 0,
+                       AMQP_SASL_METHOD_PLAIN, self->userid, self->password);
+    if (!PyRabbitMQ_handle_amqp_error(reply, "Couldn't log in",
+            PyRabbitMQExc_ConnectionError))
+        goto error;
+
     Py_RETURN_NONE;
+error:
+    return 0;
+
 }
 
 /* close */
 static PyObject *PyRabbitMQ_Connection_close(PyRabbitMQ_Connection *self) {
-    amqp_connection_close(self->conn, AMQP_REPLY_SUCCESS);
+    amqp_rpc_reply_t reply;
+
+    reply = amqp_connection_close(self->conn, AMQP_REPLY_SUCCESS);
+    if (!PyRabbitMQ_handle_amqp_error(reply, "Couldn't close connection",
+            PyRabbitMQExc_ConnectionError))
+        goto error;
+
     amqp_destroy_connection(self->conn);
-    close(self->sockfd);
+
+    if (!PyRabbitMQ_handle_error(close(self->sockfd), "Couldn't close socket"))
+        goto error;
+
     Py_RETURN_NONE;
+error:
+    return 0;
 }
 
 /* channel_open */
 static PyObject *PyRabbitMQ_Connection_channel_open(PyRabbitMQ_Connection *self,
         PyObject *args) {
     int channel;
+    amqp_rpc_reply_t reply;
+
     if (PyArg_ParseTuple(args, "I", &channel)) {
         amqp_channel_open(self->conn, channel);
-        amqp_get_rpc_reply(self->conn);
+
+        reply = amqp_get_rpc_reply(self->conn);
+        if (!PyRabbitMQ_handle_amqp_error(reply, "Couldn't create channel",
+                PyRabbitMQExc_ChannelError))
+            goto error;
     }
+
     Py_RETURN_NONE;
+
+error:
+    return 0;
 }
 
 /* channel_close */
 static PyObject *PyRabbitMQ_Connection_channel_close(PyRabbitMQ_Connection *self,
         PyObject *args) {
     int channel;
+    amqp_rpc_reply_t reply;
+
     if (PyArg_ParseTuple(args, "I", &channel)) {
-        amqp_channel_close(self->conn, channel, AMQP_REPLY_SUCCESS);
+        reply = amqp_channel_close(self->conn, channel, AMQP_REPLY_SUCCESS);
+        if (!PyRabbitMQ_handle_amqp_error(reply, "Couldn't close channel",
+                PyRabbitMQExc_ChannelError))
+            goto error;
     }
+
     Py_RETURN_NONE;
+
+error:
+    return 0;
 }
 
 void PyDict_to_basic_properties(PyObject *p, amqp_basic_properties_t *props) {
@@ -124,6 +229,7 @@ void PyDict_to_basic_properties(PyObject *p, amqp_basic_properties_t *props) {
 /* basic_publish */
 static PyObject *PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
         PyObject *args, PyObject *kwargs) {
+    int ret;
     int channel = 0;
     char *exchange = NULL;
     char *routing_key = NULL;
@@ -141,19 +247,24 @@ static PyObject *PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self
                 &exchange, &routing_key, &message, &message_size,
                 &channel, &mandatory, &immediate, &propdict)) {
         PyDict_to_basic_properties(propdict, &props);
-        amqp_basic_publish(self->conn, channel,
+        ret = amqp_basic_publish(self->conn, channel,
                            amqp_cstring_bytes(exchange),
                            amqp_cstring_bytes(routing_key),
                            (amqp_boolean_t)mandatory,
                            (amqp_boolean_t)immediate,
                            &props,
                            (amqp_bytes_t){.len = message_size, .bytes=message});
+        if (!PyRabbitMQ_handle_error(ret, "Basic Publish"))
+            goto error;
     }
     else {
-        printf("ARGUMENT ERROR");
+        goto error;
     }
 
     Py_RETURN_NONE;
+
+error:
+    return 0;
 }
 
 
