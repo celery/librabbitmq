@@ -30,13 +30,18 @@ class Channel(object):
         self.conn = conn
         self.chanid = chanid
 
-    def basic_publish(self, message, exchange=None, routing_key=None,
+    def basic_publish(self, message, exchange="", routing_key="",
             mandatory=False, immediate=False):
         self.conn._basic_publish(exchange=exchange, routing_key=routing_key,
                                  message=message.body,
                                  properties=message.properties,
                                  channel=self.chanid,
                                  mandatory=mandatory, immediate=immediate)
+
+    def exchange_declare(self, exchange="", exchange_type="direct",
+            passive=False, durable=False, auto_delete=False):
+        self.conn._exchange_declare(exchange, exchange_type,
+                self.chanid, passive, durable, auto_delete)
 
     def close(self):
         self.conn._remove_channel(self)

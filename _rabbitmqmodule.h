@@ -45,6 +45,8 @@ static PyObject *PyRabbitMQ_Connection_channel_open(PyRabbitMQ_Connection *, PyO
 static PyObject *PyRabbitMQ_Connection_channel_close(PyRabbitMQ_Connection *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
+static PyObject *PyRabbitMQ_Connection_exchange_declare(PyRabbitMQ_Connection *,
+        PyObject *, PyObject *);
 
 static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
     {"connect", (PyCFunction)PyRabbitMQ_Connection_connect, METH_NOARGS,
@@ -58,6 +60,9 @@ static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
     {"_basic_publish", (PyCFunction)PyRabbitMQ_Connection_basic_publish,
         METH_VARARGS|METH_KEYWORDS,
         "Publish message"},
+    {"_exchange_declare", (PyCFunction)PyRabbitMQ_Connection_exchange_declare,
+        METH_VARARGS|METH_KEYWORDS,
+        "Delcare an exchange"},
     {NULL, NULL, 0, NULL}
 };
 

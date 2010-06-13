@@ -5,13 +5,20 @@ from pylibrabbitmq import Message, Connection
 
 class TestChannel(unittest.TestCase):
 
+    def setUp(self):
+        self.connection = Connection()
+        self.connection.connect()
+        self.channel = self.connection.channel()
+
     def test_send_message(self):
-        connection = Connection()
-        connection.connect()
-        channel = connection.channel()
         message = Message("the quick brown fox jumps over the lazy dog",
                 content_type="application/json",
                 content_encoding="utf-8")
-        channel.basic_publish(message, "celery", "celery")
-        channel.close()
-        connection.close()
+        self.channel.basic_publish(message, "celery", "celery")
+
+    def test_exchange_declare(self):
+        self.channel.exchange_declare("tesxxx", "direct")
+
+    def tearDown(self):
+        self.channel.close()
+        self.connection.close()

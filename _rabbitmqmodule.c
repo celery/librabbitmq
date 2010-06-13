@@ -225,6 +225,42 @@ void PyDict_to_basic_properties(PyObject *p, amqp_basic_properties_t *props) {
 
 }
 
+/* exchange_declare */
+static PyObject *PyRabbitMQ_Connection_exchange_declare(PyRabbitMQ_Connection *self,
+        PyObject *args, PyObject *kwargs) {
+    char *exchange = NULL;
+    char *exchange_type = NULL;
+    int channel, passive, durable, auto_delete;
+    amqp_table_t arguments = AMQP_EMPTY_TABLE;
+
+    static char *kwlist[] = {"exchange", "exchange_type",
+                             "channel", "passive", "durable",
+                             "auto_delete", NULL}; /* TODO arguments */
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "ssiiii", kwlist,
+                &exchange, &exchange_type, &channel, &passive,
+                &durable, &auto_delete)) {
+        amqp_exchange_declare(self->conn, channel,
+                           amqp_cstring_bytes(exchange),
+                           amqp_cstring_bytes(exchange_type),
+                           (amqp_boolean_t)passive,
+                           (amqp_boolean_t)durable,
+                           (amqp_boolean_t)auto_delete,
+                           arguments);
+        if (!PyRabbitMQ_handle_amqp_error(amqp_get_rpc_reply(self->conn),
+                    "Exchange declare", PyRabbitMQExc_ChannelError))
+            goto error;
+    }
+    else {
+        goto error;
+    }
+
+    Py_RETURN_NONE;
+
+error:
+    return 0;
+}
+
+
 
 /* basic_publish */
 static PyObject *PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
