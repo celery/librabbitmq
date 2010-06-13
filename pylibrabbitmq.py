@@ -32,16 +32,26 @@ class Channel(object):
 
     def basic_publish(self, message, exchange="", routing_key="",
             mandatory=False, immediate=False):
-        self.conn._basic_publish(exchange=exchange, routing_key=routing_key,
-                                 message=message.body,
-                                 properties=message.properties,
-                                 channel=self.chanid,
-                                 mandatory=mandatory, immediate=immediate)
+        return self.conn._basic_publish(exchange=exchange,
+                routing_key=routing_key,
+                message=message.body,
+                properties=message.properties,
+                channel=self.chanid,
+                mandatory=mandatory,
+                immediate=immediate)
 
     def exchange_declare(self, exchange="", exchange_type="direct",
             passive=False, durable=False, auto_delete=False):
-        self.conn._exchange_declare(exchange, exchange_type,
+        return self.conn._exchange_declare(exchange, exchange_type,
                 self.chanid, passive, durable, auto_delete)
+
+    def queue_declare(self, queue="", passive=False, durable=False,
+            exclusive=False, auto_delete=False):
+        return self.conn._queue_declare(queue,
+                self.chanid, passive, durable, exclusive, auto_delete)
+
+    def queue_bind(self, queue="", exchange="", routing_key=""):
+        return self.conn._queue_bind(queue, exchange, routing_key, self.chanid)
 
     def close(self):
         self.conn._remove_channel(self)

@@ -19,6 +19,10 @@ class TestChannel(unittest.TestCase):
     def test_exchange_declare(self):
         self.channel.exchange_declare("tesxxx", "direct")
 
+    def test_queue_declare(self):
+        self.channel.queue_declare("tesxxx")
+        self.channel.queue_bind("tesxxx", "tesxxx", "rkey")
+
     def tearDown(self):
         self.channel.close()
         self.connection.close()

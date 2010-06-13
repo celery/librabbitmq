@@ -224,6 +224,68 @@ void PyDict_to_basic_properties(PyObject *p, amqp_basic_properties_t *props) {
 
 
 }
+/* queue_bind */
+static PyObject *PyRabbitMQ_Connection_queue_bind(PyRabbitMQ_Connection *self,
+        PyObject *args, PyObject *kwargs) {
+    char *queue = NULL;
+    char *exchange = NULL;
+    char *routing_key = NULL;
+    int channel;
+    amqp_table_t arguments = AMQP_EMPTY_TABLE;
+
+    static char *kwlist[] = {"queue", "exchange", "routing_key", "channel", NULL};
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "sssi", kwlist,
+                &queue, &exchange, &routing_key, &channel)) {
+        amqp_queue_bind(self->conn, channel,
+                           amqp_cstring_bytes(queue),
+                           amqp_cstring_bytes(exchange),
+                           amqp_cstring_bytes(routing_key),
+                           arguments);
+        if (!PyRabbitMQ_handle_amqp_error(amqp_get_rpc_reply(self->conn),
+                    "Queue bind", PyRabbitMQExc_ChannelError))
+            goto error;
+    }
+    else {
+        goto error;
+    }
+
+    Py_RETURN_NONE;
+
+error:
+    return 0;
+}
+
+/* queue_declare */
+static PyObject *PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *self,
+        PyObject *args, PyObject *kwargs) {
+    char *queue = NULL;
+    int channel, passive, durable, exclusive, auto_delete;
+    amqp_table_t arguments = AMQP_EMPTY_TABLE;
+
+    static char *kwlist[] = {"queue", "channel", "passive", "durable",
+                             "exclusive", "auto_delete", NULL}; /* TODO arguments */
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "siiiii", kwlist,
+                &queue, &channel, &passive, &durable, &exclusive, &auto_delete)) {
+        amqp_queue_declare(self->conn, channel,
+                           amqp_cstring_bytes(queue),
+                           (amqp_boolean_t)passive,
+                           (amqp_boolean_t)durable,
+                           (amqp_boolean_t)exclusive,
+                           (amqp_boolean_t)auto_delete,
+                           arguments);
+        if (!PyRabbitMQ_handle_amqp_error(amqp_get_rpc_reply(self->conn),
+                    "Queue declare", PyRabbitMQExc_ChannelError))
+            goto error;
+    }
+    else {
+        goto error;
+    }
+
+    Py_RETURN_NONE;
+
+error:
+    return 0;
+}
 
 /* exchange_declare */
 static PyObject *PyRabbitMQ_Connection_exchange_declare(PyRabbitMQ_Connection *self,
