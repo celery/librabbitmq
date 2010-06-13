@@ -7,6 +7,7 @@
 
 #define PYRABBITMQ_VERSION "0.0.1"
 
+/* __new__ */
 static PyRabbitMQ_Connection* PyRabbitMQ_ConnectionType_new(PyTypeObject *type,
        PyObject *args, PyObject *kwargs) {
     PyRabbitMQ_Connection *self;
@@ -26,10 +27,12 @@ static PyRabbitMQ_Connection* PyRabbitMQ_ConnectionType_new(PyTypeObject *type,
     return self;
 }
 
+/* dealloc */
 static void PyRabbitMQ_ConnectionType_dealloc(PyRabbitMQ_Connection *self) {
     self->ob_type->tp_free(self);
 }
 
+/* __init__ */
 static int PyRabbitMQ_Connection_init(PyRabbitMQ_Connection *self,
         PyObject *args, PyObject *kwargs) {
     char *hostname;
@@ -40,7 +43,7 @@ static int PyRabbitMQ_Connection_init(PyRabbitMQ_Connection *self,
 
     static char *kwlist[] = {"hostname", "userid", "password",
                              "vhost", "port", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ssss|i", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|ssssi", kwlist,
                 &hostname, &userid, &password, &vhost, &port)) {
         return -1;
     }
@@ -51,12 +54,10 @@ static int PyRabbitMQ_Connection_init(PyRabbitMQ_Connection *self,
     self->vhost = vhost;
     self->port = port;
 
-    printf("hostname: %s userid: %s password: %s, vhost: %s, port: %d\n",
-            hostname, userid, password, vhost, port);
-
     return 0;
 }
 
+/* connect */
 static PyObject *PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self) {
     self->conn = amqp_new_connection();
     self->sockfd = amqp_open_socket(self->hostname, self->port);
@@ -66,6 +67,7 @@ static PyObject *PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self) {
     Py_RETURN_NONE;
 }
 
+/* close */
 static PyObject *PyRabbitMQ_Connection_close(PyRabbitMQ_Connection *self) {
     amqp_connection_close(self->conn, AMQP_REPLY_SUCCESS);
     amqp_destroy_connection(self->conn);
@@ -73,6 +75,7 @@ static PyObject *PyRabbitMQ_Connection_close(PyRabbitMQ_Connection *self) {
     Py_RETURN_NONE;
 }
 
+/* channel_open */
 static PyObject *PyRabbitMQ_Connection_channel_open(PyRabbitMQ_Connection *self,
         PyObject *args) {
     int channel;
@@ -83,6 +86,7 @@ static PyObject *PyRabbitMQ_Connection_channel_open(PyRabbitMQ_Connection *self,
     Py_RETURN_NONE;
 }
 
+/* channel_close */
 static PyObject *PyRabbitMQ_Connection_channel_close(PyRabbitMQ_Connection *self,
         PyObject *args) {
     int channel;
@@ -92,7 +96,32 @@ static PyObject *PyRabbitMQ_Connection_channel_close(PyRabbitMQ_Connection *self
     Py_RETURN_NONE;
 }
 
+void PyDict_to_basic_properties(PyObject *p, amqp_basic_properties_t *props) {
+    props->_flags = 0;
+    PyObject *value = NULL;
 
+    if ((value = PyDict_GetItemString(p, "content_type")) != NULL) {
+        props->content_type = amqp_cstring_bytes(PyString_AsString(value));
+        props->_flags |= AMQP_BASIC_CONTENT_TYPE_FLAG;
+    }
+    if ((value = PyDict_GetItemString(p, "content_encoding")) != NULL) {
+        props->content_encoding = amqp_cstring_bytes(PyString_AsString(value));
+        props->_flags |= AMQP_BASIC_CONTENT_ENCODING_FLAG;
+    }
+    if ((value = PyDict_GetItemString(p, "delivery_mode")) != NULL) {
+        props->delivery_mode = (uint8_t)PyInt_AS_LONG(value);
+        props->_flags |= AMQP_BASIC_DELIVERY_MODE_FLAG;
+    }
+    if ((value = PyDict_GetItemString(p, "priority")) != NULL) {
+        props->priority = (uint8_t)PyInt_AS_LONG(value);
+        props->_flags |= AMQP_BASIC_PRIORITY_FLAG;
+    }
+
+
+}
+
+
+/* basic_publish */
 static PyObject *PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
         PyObject *args, PyObject *kwargs) {
     int channel = 0;
@@ -101,20 +130,27 @@ static PyObject *PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self
     int mandatory = 0;
     int immediate = 0;
     char *message = 0;
+    amqp_basic_properties_t props;
+    PyObject *propdict;
     PY_SIZE_TYPE message_size;
 
     static char *kwlist[] = {"exchange", "routing_key", "message",
-                             "channel", "mandatory", "immediate", NULL};
-    if (PyArg_ParseTupleAndKeywords(args, kwargs, "sss#|iii", kwlist,
-                &exchange, &routing_key, &message, &message_size, &channel,
-                &mandatory, &immediate)) {
+                             "channel", "mandatory", "immediate",
+                             "properties", NULL};
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "sss#iiiO", kwlist,
+                &exchange, &routing_key, &message, &message_size,
+                &channel, &mandatory, &immediate, &propdict)) {
+        PyDict_to_basic_properties(propdict, &props);
         amqp_basic_publish(self->conn, channel,
                            amqp_cstring_bytes(exchange),
                            amqp_cstring_bytes(routing_key),
                            (amqp_boolean_t)mandatory,
                            (amqp_boolean_t)immediate,
-                           NULL,
+                           &props,
                            (amqp_bytes_t){.len = message_size, .bytes=message});
+    }
+    else {
+        printf("ARGUMENT ERROR");
     }
 
     Py_RETURN_NONE;
@@ -144,5 +180,15 @@ PyMODINIT_FUNC init_pyrabbitmq(void) {
     PyModule_AddObject(module, "connection", (PyObject *)&PyRabbitMQ_ConnectionType);
 
     PyModule_AddIntConstant(module, "AMQP_SASL_METHOD_PLAIN", AMQP_SASL_METHOD_PLAIN);
+
+    PyRabbitMQExc_ConnectionError = PyErr_NewException(
+            "_pyrabbitmq.ConnectionError", NULL, NULL);
+    PyModule_AddObject(module, "ConnectionError",
+                       (PyObject *)PyRabbitMQExc_ConnectionError);
+    PyRabbitMQExc_ChannelError = PyErr_NewException(
+            "_pyrabbitmq.ChannelError", NULL, NULL);
+    PyModule_AddObject(module, "ChannelError",
+                       (PyObject *)PyRabbitMQExc_ChannelError);
+
 
 }

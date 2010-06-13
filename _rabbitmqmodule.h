@@ -26,8 +26,14 @@ typedef struct {
     int sockfd;
 } PyRabbitMQ_Connection;
 
+/* utils */
+void PyDict_to_basic_properties(PyObject *, amqp_basic_properties_t *);
 
+/* Exceptions */
+static PyObject *PyRabbitMQExc_ConnectionError;
+static PyObject *PyRabbitMQExc_ChannelError;
 
+/* Connection */
 static PyRabbitMQ_Connection* PyRabbitMQ_ConnectionType_new(PyTypeObject *,
        PyObject *, PyObject *);
 static void PyRabbitMQ_ConnectionType_dealloc(PyRabbitMQ_Connection *);
