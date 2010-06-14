@@ -6,10 +6,7 @@ include LICENSE-GPL-2.0
 include LICENSE-MPL-RabbitMQ
 include TODO
 include setup.cfg
-include _rabbitmqmodule.c
-include _rabbitmqmodule.h
-include pylibrabbitmq.py
-include pylibrabbitmq_distmeta.h
+recursive-include pylibrabbitmq *
 recursive-include tests *
 prune *.pyc
 prune *.o

@@ -1,6 +1,6 @@
 import os
 import sys
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 
 # --with-librabbitmq=<dir>: path to librabbitmq package if needed
 
@@ -69,6 +69,7 @@ setup(
     long_description=long_description,
     test_suite="nose.collector",
     zip_safe=False,
+    packages=find_packages(exclude=['ez_setup', 'tests', 'tests.*']),
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Operating System :: OS Independent",
