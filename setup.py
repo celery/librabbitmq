@@ -34,7 +34,7 @@ for pkgdir in pkgdirs:
     incdirs.append(os.path.join(pkgdir, "include"))
     libdirs.append(os.path.join(pkgdir, "lib"))
 
-pyrabbitmq_ext = Extension("_pyrabbitmq", ["_rabbitmqmodule.c"],
+pyrabbitmq_ext = Extension("_pyrabbitmq", ["pylibrabbitmq/_rabbitmqmodule.c"],
                         libraries=libs, include_dirs=incdirs,
                         library_dirs=libdirs, define_macros=defs)
 
@@ -51,7 +51,7 @@ if cmd == "gen-setup":
     sys.exit(0)
 
 long_description = open("README.rst", "U").read()
-distmeta = open("pylibrabbitmq_distmeta.h").read().strip().splitlines()
+distmeta = open("pylibrabbitmq/pylibrabbitmq_distmeta.h").read().strip().splitlines()
 distmeta = [item.split('\"')[1] for item in distmeta]
 version = distmeta[0].strip()
 author = distmeta[1].strip()
