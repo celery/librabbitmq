@@ -50,13 +50,34 @@ if cmd == "gen-setup":
     open("Setup", "w").write(line + "\n")
     sys.exit(0)
 
-readme_text = "foo" #open("README.rst", "U").read()
-version = "0.0.1" #open("pylibmc-version.h", "U").read().strip().split("\"")[1]
+long_description = open("README.rst", "U").read()
+distmeta = open("pylibrabbitmq_distmeta.h").read().strip().splitlines()
+distmeta = [item.split('\"')[1] for item in distmeta]
+version = distmeta[0].strip()
+author = distmeta[1].strip()
+contact = distmeta[2].strip()
+homepage = distmeta[3].strip()
 
-setup(name="pylibrabbitmq", version=version,
-        url="http://github.com/ask/pylibrabbitmq",
-      author="Ask Solem", author_email="ask@celeryproject.org",
-      license="BSD",
-      description="In-progress Python bindings to librabbitmq-c",
-      long_description=readme_text,
-      ext_modules=[pyrabbitmq_ext], py_modules=["pylibrabbitmq"])
+setup(
+    name="pylibrabbitmq",
+    version=version,
+    url=homepage,
+    author=author,
+    author_email=contact,
+    license="MPL",
+    description="Python bindings to librabbitmq-c",
+    long_description=long_description,
+    test_suite="nose.collector",
+    zip_safe=False,
+    classifiers=[
+        "Development Status :: 3 - Alpha",
+        "Operating System :: OS Independent",
+        "Programming Language :: C",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: Mozilla Public License 1.0 (MPL)",
+        "Topic :: Communications",
+        "Topic :: System :: Networking",
+        "Topic :: Software Development :: Libraries",
+    ],
+    ext_modules=[pyrabbitmq_ext], py_modules=["pylibrabbitmq"],
+)

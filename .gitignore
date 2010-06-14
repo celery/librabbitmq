@@ -13,4 +13,8 @@ pip-log.txt
 .directory
 erl_crash.dump
 *.db
+*.o
+*.so
+*.dylib
 Documentation/
+MANIFEST

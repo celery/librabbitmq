@@ -1,0 +1,17 @@
+include AUTHORS
+include Changelog
+include README.rst
+include MANIFEST.in
+include LICENSE-GPL-2.0
+include LICENSE-MPL-RabbitMQ
+include TODO
+include setup.cfg
+include _rabbitmqmodule.c
+include _rabbitmqmodule.h
+include pylibrabbitmq.py
+include pylibrabbitmq_distmeta.h
+recursive-include tests *
+prune *.pyc
+prune *.o
+prune *.so
+prune *.dylib
