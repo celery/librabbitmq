@@ -2,8 +2,37 @@
  pylibrabbitmq - Python bindings to librabbitmq-c
 ==================================================
 
-**EXPERIMENTAL!**
+.. contents::
+    :local:
 
+Experimental Python bindings to the RabbitMQ C-library `librabbitmq`_.
+
+
+You should probably use `amqplib`_ instead, but when needed you can 
+come back to this if the extra performance is needed.
+
+.. _`librabbitmq`: http://hg.rabbitmq.com/rabbitmq-c/
+.. _`amqplib`: http://barryp.org/software/py-amqplib/
+
+Installation
+============
+
+To install you need to compile `librabbitmq`::
+
+    $ mkdir -p /opt/Build/rabbit
+    $ cd /opt/Build/rabbit
+    $ hg clone http://hg.rabbitmq.com/rabbitmq-codegen/
+    $ hg clone http://hg.rabbitmq.com/rabbitmq-c/
+    $ cd rabbitmq-c
+    $ autoreconf -i
+    $ ./configure
+    $ make
+    $ make install
+
+Then you can install this package::
+
+    $ cd pylibrabbitmq-x.x.x
+    $ python setup.py install
 
 Examples
 ========
@@ -56,3 +85,11 @@ Other
     >>> channel.close()
     >>> connection.close()
 
+License
+=======
+
+This software is licensed under the ``Mozilla Public License``.
+See the ``LICENSE-MPL-RabbitMQ`` file in the top distribution directory
+for the full license text.
+
+.. # vim: syntax=rst expandtab tabstop=4 shiftwidth=4 shiftround
