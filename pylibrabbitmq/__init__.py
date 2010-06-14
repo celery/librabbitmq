@@ -134,8 +134,6 @@ class Connection(_pyrabbitmq.connection):
         self.userid = userid
         self.password = password
         self.virtual_host = virtual_host
-        print("FRAME_MAX: %s" % self.frame_max)
-        print("HEARTBEAT: %s" % self.heartbeat)
         super(Connection, self).__init__(hostname=host, port=self.port,
                                      userid=userid, password=password,
                                      virtual_host=virtual_host,
