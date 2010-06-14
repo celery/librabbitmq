@@ -4,7 +4,7 @@ from pylibrabbitmq import Message, Connection
 TEST_QUEUE = "pyrabbit.testq"
 
 
-class TestChannel(unittest.TestCase):
+class test_Channel(unittest.TestCase):
 
     def setUp(self):
         self.connection = Connection()

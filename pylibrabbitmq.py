@@ -3,7 +3,7 @@ from itertools import count
 import _pyrabbitmq
 
 __version__ = _pyrabbitmq.__version__
-__author__ = _pyrabbitmq_.__author__
+__author__ = _pyrabbitmq.__author__
 __contact__ = _pyrabbitmq.__contact__
 __homepage__ = _pyrabbitmq.__homepage__
 __docformat__ = "restructuredtext"
