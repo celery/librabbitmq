@@ -1,11 +1,16 @@
 #ifndef __PYLIBRABBIT_H__
 #define __PYLIBRABBIT_H__
 
+#define PY25
 #ifdef PY25
 #  define PY_SSIZE_T_CLEAN
 #  define PY_SIZE_TYPE Py_ssize_t
+#  define PYINT_FROM_SSIZE_T PyInt_FromSsize_t
+#  define PYINT_AS_SSIZE_T PyInt_AsSsize_t
 #else
-#  define PY_SIZE_TYPE int
+#  define PY_SIZE_TYPE long
+#  define PYINT_FROM_SSIZE_T PyInt_FromLong
+#  define PYINT_AS_SSIZE_T PyInt_AsLong
 #endif
 
 #include <Python.h>
@@ -24,6 +29,7 @@ typedef struct {
     int port;
 
     int sockfd;
+    int connected;
 } PyRabbitMQ_Connection;
 
 /* utils */
@@ -57,6 +63,12 @@ static PyObject *PyRabbitMQ_Connection_basic_get(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_queue_purge(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
+static PyObject *PyRabbitMQ_Connection_basic_ack(PyRabbitMQ_Connection *,
+        PyObject *, PyObject *);
+static PyObject *PyRabbitMQ_Connection_basic_recv(PyRabbitMQ_Connection *,
+        PyObject *, PyObject *);
+static PyObject *PyRabbitMQ_Connection_basic_consume(PyRabbitMQ_Connection *,
+        PyObject *, PyObject *);
 
 static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
     {"connect", (PyCFunction)PyRabbitMQ_Connection_connect, METH_NOARGS,
@@ -88,6 +100,15 @@ static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
     {"_queue_purge", (PyCFunction)PyRabbitMQ_Connection_queue_purge,
         METH_VARARGS|METH_KEYWORDS,
         "queue.purge"},
+    {"_basic_ack", (PyCFunction)PyRabbitMQ_Connection_basic_ack,
+        METH_VARARGS|METH_KEYWORDS,
+        "basic.ack"},
+    {"_basic_recv", (PyCFunction)PyRabbitMQ_Connection_basic_recv,
+        METH_VARARGS|METH_KEYWORDS,
+        "recv"},
+    {"_basic_consume", (PyCFunction)PyRabbitMQ_Connection_basic_consume,
+        METH_VARARGS|METH_KEYWORDS,
+        "basic.consume"},
     {NULL, NULL, 0, NULL}
 };
 

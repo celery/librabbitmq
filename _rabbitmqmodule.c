@@ -87,6 +87,7 @@ static PyRabbitMQ_Connection* PyRabbitMQ_ConnectionType_new(PyTypeObject *type,
         self->vhost = NULL;
         self->port = 5672;
         self->sockfd = 0;
+        self->connected = 0;
     }
 
     return self;
@@ -125,6 +126,10 @@ static int PyRabbitMQ_Connection_init(PyRabbitMQ_Connection *self,
 /* connect */
 static PyObject *PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self) {
     amqp_rpc_reply_t reply;
+    if (self->connected) {
+        PyErr_SetString(PyRabbitMQExc_ConnectionError, "Already connected");
+        goto error;
+    }
     self->conn = amqp_new_connection();
     self->sockfd = amqp_open_socket(self->hostname, self->port);
     if (!PyRabbitMQ_handle_error(self->sockfd, "Couldn't open socket"))
@@ -136,6 +141,7 @@ static PyObject *PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self) {
             PyRabbitMQExc_ConnectionError))
         goto error;
 
+    self->connected = 1;
     Py_RETURN_NONE;
 error:
     return 0;
@@ -145,16 +151,18 @@ error:
 /* close */
 static PyObject *PyRabbitMQ_Connection_close(PyRabbitMQ_Connection *self) {
     amqp_rpc_reply_t reply;
+    if (self->connected) {
+        reply = amqp_connection_close(self->conn, AMQP_REPLY_SUCCESS);
+        if (!PyRabbitMQ_handle_amqp_error(reply, "Couldn't close connection",
+                PyRabbitMQExc_ConnectionError))
+            goto error;
 
-    reply = amqp_connection_close(self->conn, AMQP_REPLY_SUCCESS);
-    if (!PyRabbitMQ_handle_amqp_error(reply, "Couldn't close connection",
-            PyRabbitMQExc_ConnectionError))
-        goto error;
+        amqp_destroy_connection(self->conn);
 
-    amqp_destroy_connection(self->conn);
-
-    if (!PyRabbitMQ_handle_error(close(self->sockfd), "Couldn't close socket"))
-        goto error;
+        if (!PyRabbitMQ_handle_error(close(self->sockfd), "Couldn't close socket"))
+            goto error;
+        self->connected = 0;
+    }
 
     Py_RETURN_NONE;
 error:
@@ -201,6 +209,68 @@ error:
     return 0;
 }
 
+void basic_properties_to_PyDict(amqp_basic_properties_t *props,
+        PyObject *p) {
+
+    if (props->_flags & AMQP_BASIC_CONTENT_TYPE_FLAG) {
+        PyDict_SetItemString(p, "content_type",
+            PyString_FromStringAndSize(props->content_type.bytes,
+                props->content_type.len));
+    }
+    if (props->_flags & AMQP_BASIC_CONTENT_ENCODING_FLAG) {
+        PyDict_SetItemString(p, "content_encoding",
+            PyString_FromStringAndSize(props->content_encoding.bytes,
+                props->content_encoding.len));
+    }
+    if (props->_flags & AMQP_BASIC_CORRELATION_ID_FLAG) {
+        PyDict_SetItemString(p, "correlation_id",
+            PyString_FromStringAndSize(props->correlation_id.bytes,
+                props->correlation_id.len));
+    }
+    if (props->_flags & AMQP_BASIC_REPLY_TO_FLAG) {
+        PyDict_SetItemString(p, "reply_to",
+            PyString_FromStringAndSize(props->reply_to.bytes,
+                props->reply_to.len));
+    }
+    if (props->_flags & AMQP_BASIC_EXPIRATION_FLAG) {
+        PyDict_SetItemString(p, "expiration",
+            PyString_FromStringAndSize(props->expiration.bytes,
+                props->expiration.len));
+    }
+    if (props->_flags & AMQP_BASIC_MESSAGE_ID_FLAG) {
+        PyDict_SetItemString(p, "message_id",
+            PyString_FromStringAndSize(props->message_id.bytes,
+                props->message_id.len));
+    }
+    if (props->_flags & AMQP_BASIC_TYPE_FLAG) {
+        PyDict_SetItemString(p, "type",
+            PyString_FromStringAndSize(props->type.bytes,
+                props->type.len));
+    }
+    if (props->_flags & AMQP_BASIC_USER_ID_FLAG) {
+        PyDict_SetItemString(p, "user_id",
+            PyString_FromStringAndSize(props->user_id.bytes,
+                props->user_id.len));
+    }
+    if (props->_flags & AMQP_BASIC_APP_ID_FLAG) {
+        PyDict_SetItemString(p, "app_id",
+            PyString_FromStringAndSize(props->app_id.bytes,
+                props->app_id.len));
+    }
+    if (props->_flags & AMQP_BASIC_DELIVERY_MODE_FLAG) {
+        PyDict_SetItemString(p, "delivery_mode",
+            PyInt_FromLong(props->delivery_mode));
+    }
+    if (props->_flags & AMQP_BASIC_PRIORITY_FLAG) {
+        PyDict_SetItemString(p, "priority",
+            PyInt_FromLong(props->priority));
+    }
+    if (props->_flags & AMQP_BASIC_TIMESTAMP_FLAG) {
+        PyDict_SetItemString(p, "timestamp",
+            PyInt_FromLong(props->timestamp));
+    }
+}
+
 void PyDict_to_basic_properties(PyObject *p, amqp_basic_properties_t *props) {
     props->_flags = 0;
     PyObject *value = NULL;
@@ -213,6 +283,34 @@ void PyDict_to_basic_properties(PyObject *p, amqp_basic_properties_t *props) {
         props->content_encoding = amqp_cstring_bytes(PyString_AsString(value));
         props->_flags |= AMQP_BASIC_CONTENT_ENCODING_FLAG;
     }
+    if ((value = PyDict_GetItemString(p, "correlation_id")) != NULL) {
+        props->correlation_id = amqp_cstring_bytes(PyString_AsString(value));
+        props->_flags |= AMQP_BASIC_CORRELATION_ID_FLAG;
+    }
+    if ((value = PyDict_GetItemString(p, "reply_to")) != NULL) {
+        props->reply_to = amqp_cstring_bytes(PyString_AsString(value));
+        props->_flags |= AMQP_BASIC_REPLY_TO_FLAG;
+    }
+    if ((value = PyDict_GetItemString(p, "expiration")) != NULL) {
+        props->expiration = amqp_cstring_bytes(PyString_AsString(value));
+        props->_flags |= AMQP_BASIC_EXPIRATION_FLAG;
+    }
+    if ((value = PyDict_GetItemString(p, "message_id")) != NULL) {
+        props->message_id = amqp_cstring_bytes(PyString_AsString(value));
+        props->_flags |= AMQP_BASIC_MESSAGE_ID_FLAG;
+    }
+    if ((value = PyDict_GetItemString(p, "type")) != NULL) {
+        props->type = amqp_cstring_bytes(PyString_AsString(value));
+        props->_flags |= AMQP_BASIC_TYPE_FLAG;
+    }
+    if ((value = PyDict_GetItemString(p, "user_id")) != NULL) {
+        props->user_id = amqp_cstring_bytes(PyString_AsString(value));
+        props->_flags |= AMQP_BASIC_USER_ID_FLAG;
+    }
+    if ((value = PyDict_GetItemString(p, "app_id")) != NULL) {
+        props->app_id = amqp_cstring_bytes(PyString_AsString(value));
+        props->_flags |= AMQP_BASIC_APP_ID_FLAG;
+    }
     if ((value = PyDict_GetItemString(p, "delivery_mode")) != NULL) {
         props->delivery_mode = (uint8_t)PyInt_AS_LONG(value);
         props->_flags |= AMQP_BASIC_DELIVERY_MODE_FLAG;
@@ -221,9 +319,103 @@ void PyDict_to_basic_properties(PyObject *p, amqp_basic_properties_t *props) {
         props->priority = (uint8_t)PyInt_AS_LONG(value);
         props->_flags |= AMQP_BASIC_PRIORITY_FLAG;
     }
+    if ((value = PyDict_GetItemString(p, "timestamp")) != NULL) {
+        props->timestamp = (uint8_t)PyInt_AS_LONG(value);
+        props->_flags |= AMQP_BASIC_TIMESTAMP_FLAG;
+    }
 
 
 }
+
+int PyRabbitMQ_recv(PyObject *p, amqp_connection_state_t conn, int piggyback) {
+    amqp_frame_t frame;
+    amqp_basic_deliver_t *deliver;
+    amqp_basic_properties_t *props;
+    size_t body_target;
+    size_t body_received;
+    int retval = 0;
+
+    while (1) {
+        PyObject *payload;
+        PyObject *propdict;
+
+        if (!piggyback) {
+            PyObject *delivery_info;
+            amqp_maybe_release_buffers(conn);
+            retval = amqp_simple_wait_frame(conn, &frame);
+            if (retval <= 0) break;
+            if (frame.frame_type != AMQP_FRAME_METHOD) continue;
+            if (frame.payload.method.id != AMQP_BASIC_DELIVER_METHOD) continue;
+
+            delivery_info = PyDict_New();
+            PyDict_SetItemString(p, "delivery_info", delivery_info);
+
+            deliver = (amqp_basic_deliver_t *)frame.payload.method.decoded;
+            PyDict_SetItemString(delivery_info, "delivery_tag",
+                    PYINT_FROM_SSIZE_T((PY_SIZE_TYPE)deliver->delivery_tag));
+            PyDict_SetItemString(delivery_info, "consumer_tag",
+                PyString_FromStringAndSize(deliver->consumer_tag.bytes,
+                    deliver->consumer_tag.len));
+            PyDict_SetItemString(delivery_info, "exchange",
+                PyString_FromStringAndSize(deliver->exchange.bytes,
+                    deliver->exchange.len));
+            PyDict_SetItemString(delivery_info, "routing_key",
+                PyString_FromStringAndSize(deliver->routing_key.bytes,
+                    deliver->routing_key.len));
+            piggyback = 0;
+        }
+
+
+        retval = amqp_simple_wait_frame(conn, &frame);
+        if (retval <= 0) break;
+
+        if (frame.frame_type != AMQP_FRAME_HEADER) {
+            char errorstr[1024];
+            snprintf(errorstr, sizeof(errorstr),
+                "Unexpected header %d", frame.frame_type);
+            PyErr_SetString(PyRabbitMQExc_ChannelError,
+                    errorstr);
+            return -1;
+
+        }
+
+        PyDict_SetItemString(p, "channel",
+                PyInt_FromLong((long)frame.channel));
+
+        propdict = PyDict_New();
+        PyDict_SetItemString(p, "properties", propdict);
+        props = (amqp_basic_properties_t *)frame.payload.properties.decoded;
+        basic_properties_to_PyDict(props, propdict);
+
+        body_target = frame.payload.properties.body_size;
+        body_received = 0;
+        payload = PyString_FromStringAndSize("", 0);
+
+        while (body_received < body_target) {
+            PyObject *part;
+            retval = amqp_simple_wait_frame(conn, &frame);
+            if (retval <= 0) break;
+
+            if (frame.frame_type != AMQP_FRAME_BODY) {
+                PyErr_SetString(PyRabbitMQExc_ChannelError,
+                    "Expected body, got unexpected frame");
+            }
+
+            body_received += frame.payload.body_fragment.len;
+            part = PyString_FromStringAndSize(
+                    frame.payload.body_fragment.bytes,
+                    frame.payload.body_fragment.len);
+            PyString_Concat(&payload, part);
+            if (payload == NULL) return -1;
+        }
+
+        PyDict_SetItemString(p, "body", payload);
+        break;
+    }
+    return retval;
+
+}
+
 
 /* queue_bind */
 static PyObject *PyRabbitMQ_Connection_queue_bind(PyRabbitMQ_Connection *self,
@@ -310,6 +502,7 @@ static PyObject *PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *self
         if (!PyRabbitMQ_handle_amqp_error(reply,
                     "queue.declare", PyRabbitMQExc_ChannelError))
             goto error;
+
         PyObject *p = PyDict_New();
         PyDict_SetItemString(p, "message_count",
                 PyInt_FromLong((long)ok->message_count));
@@ -318,7 +511,6 @@ static PyObject *PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *self
         PyDict_SetItemString(p, "queue",
                 PyString_FromStringAndSize(ok->queue.bytes,
                     ok->queue.len));
-
         Py_INCREF(p);
         return p;
     }
@@ -442,6 +634,95 @@ error:
     return 0;
 }
 
+/* basic_ack */
+static PyObject *PyRabbitMQ_Connection_basic_ack(PyRabbitMQ_Connection *self,
+        PyObject *args, PyObject *kwargs) {
+    int channel = 0;
+    int multiple = 0;
+    PyObject *delivery_tag = NULL;
+    PY_SIZE_TYPE tag;
+    int ret;
+
+    static char *kwlist[] = {"delivery_tag", "multiple", "channel", NULL};
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "Oii", kwlist,
+                &delivery_tag, &multiple, &channel)) {
+        tag = PYINT_AS_SSIZE_T(delivery_tag);
+        if (tag == -1 && PyErr_Occurred() != NULL)
+            goto error;
+        ret = amqp_basic_ack(self->conn, channel,
+                           (uint64_t)tag,
+                           (amqp_boolean_t)multiple);
+        if (!PyRabbitMQ_handle_error(ret, "Basic Publish"))
+            goto error;
+    }
+    else {
+        goto error;
+    }
+
+    Py_RETURN_NONE;
+
+error:
+    return 0;
+}
+
+/* basic_consume */
+static PyObject *PyRabbitMQ_Connection_basic_consume(PyRabbitMQ_Connection *self,
+        PyObject *args, PyObject *kwargs) {
+    char *queue = NULL;
+    char *consumer_tag = NULL;
+    int channel, no_local, no_ack, exclusive;
+    amqp_basic_consume_ok_t *ok;
+
+    static char *kwlist[] = {"queue", "consumer_tag", "no_local",
+                             "no_ack", "exclusive", "channel", NULL};
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "ssiiii", kwlist,
+                &queue, &consumer_tag, &no_local, &no_ack,
+                &exclusive, &channel)) {
+        ok = amqp_basic_consume(self->conn, channel,
+                           amqp_cstring_bytes(queue),
+                           amqp_cstring_bytes(consumer_tag),
+                           no_local,
+                           no_ack,
+                           exclusive);
+        if (!PyRabbitMQ_handle_amqp_error(amqp_get_rpc_reply(self->conn),
+                    "basic.consume", PyRabbitMQExc_ChannelError))
+            goto error;
+        return PyString_FromStringAndSize(ok->consumer_tag.bytes,
+                                          ok->consumer_tag.len);
+    }
+    else {
+        goto error;
+    }
+
+    Py_RETURN_NONE;
+
+error:
+    return 0;
+}
+
+static PyObject *PyRabbitMQ_Connection_basic_recv(PyRabbitMQ_Connection *self,
+        PyObject *args, PyObject *kwargs) {
+    int retval;
+    PyObject *p;
+
+    p = PyDict_New();
+    retval = PyRabbitMQ_recv(p, self->conn, 0);
+    if (retval < 0) {
+        if (PyErr_Occurred() == NULL) {
+            PyErr_SetString(PyRabbitMQExc_ChannelError,
+                    "Bad frame read");
+        }
+        goto error;
+    }
+    return p;
+
+error:
+    return 0;
+}
+
+
+
+
 /* basic_get */
 static PyObject *PyRabbitMQ_Connection_basic_get(PyRabbitMQ_Connection *self,
         PyObject *args, PyObject *kwargs) {
@@ -462,20 +743,31 @@ static PyObject *PyRabbitMQ_Connection_basic_get(PyRabbitMQ_Connection *self,
         if (reply.reply.id == AMQP_BASIC_GET_OK_METHOD) {
             amqp_basic_get_ok_t *ok = (amqp_basic_get_ok_t *)reply.reply.decoded;
             PyObject *p = PyDict_New();
-            PyDict_SetItemString(p, "delivery_tag",
-                    PyInt_FromLong((long)ok->delivery_tag));
-            PyDict_SetItemString(p, "redelivered",
+            PyObject *delivery_info = PyDict_New();
+            PyDict_SetItemString(p, "delivery_info", delivery_info);
+            PyDict_SetItemString(delivery_info, "delivery_tag",
+                    PYINT_FROM_SSIZE_T((PY_SIZE_TYPE)ok->delivery_tag));
+            PyDict_SetItemString(delivery_info, "redelivered",
                     PyInt_FromLong((long)ok->redelivered));
-            PyDict_SetItemString(p, "exchange",
+            PyDict_SetItemString(delivery_info, "exchange",
                     PyString_FromStringAndSize(ok->exchange.bytes,
                         ok->exchange.len));
-            PyDict_SetItemString(p, "routing_key",
+            PyDict_SetItemString(delivery_info, "routing_key",
                     PyString_FromStringAndSize(ok->routing_key.bytes,
                         ok->routing_key.len));
-            PyDict_SetItemString(p, "message_count",
+            PyDict_SetItemString(delivery_info, "message_count",
                     PyInt_FromLong((long)ok->message_count));
 
-            // TODO Receive message
+            if (amqp_data_in_buffer(self->conn)) {
+                if (PyRabbitMQ_recv(p, self->conn, 1) < 0) {
+                    if (PyErr_Occurred() == NULL) {
+                        PyErr_SetString(PyRabbitMQExc_ChannelError,
+                                "Bad frame read");
+                    }
+                    goto error;
+                }
+            }
+
             Py_INCREF(p);
             return p;
         }

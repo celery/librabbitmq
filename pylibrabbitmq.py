@@ -1,3 +1,5 @@
+from itertools import count
+
 import _pyrabbitmq
 
 ConnectionError = _pyrabbitmq.ConnectionError
@@ -8,20 +10,20 @@ __all__ = ["Connection", "Message", "ConnectionError", "ChannelError"]
 
 
 class Message(object):
-    _props = ("content_type", "content_encoding",
-              "priority", "delivery_mode")
 
-    def __init__(self, body, content_type=None, content_encoding=None,
-            priority=None, delivery_mode=None):
+    def __init__(self, body, properties=None, delivery_info=None,
+            channel=None, **kwargs):
+        if properties is None:
+            properties = {}
+        if delivery_info is None:
+            delivery_info = {}
         self.body = body
-        self.content_type = content_type
-        self.content_encoding = content_encoding
-        self.priority = priority
+        self.properties = properties
+        self.delivery_info = delivery_info
+        self.channel = channel
 
-    @property
-    def properties(self):
-        return dict((k, getattr(self, k)) for k in self._props
-                    if getattr(self, k, None) is not None)
+    def ack(self):
+        return self.channel.basic_ack(self.delivery_info["delivery_tag"])
 
 
 class Channel(object):
@@ -29,9 +31,34 @@ class Channel(object):
     def __init__(self, conn, chanid):
         self.conn = conn
         self.chanid = chanid
+        self.next_consumer_tag = count(1).next
+        self._callbacks = {}
 
     def basic_get(self, queue="", noack=False):
-        return self.conn._basic_get(queue, noack, self.chanid)
+        d = self.conn._basic_get(queue, noack, self.chanid)
+        if d is not None:
+            return Message(channel=self, **d)
+
+    def basic_consume(self, queue="", consumer_tag=None, no_local=False,
+            no_ack=False, exclusive=False, callback=None):
+        if consumer_tag is None:
+            consumer_tag = str(self.next_consumer_tag())
+        self.conn._basic_consume(queue, consumer_tag, no_local,
+                no_ack, exclusive, self.chanid)
+        self._callbacks[consumer_tag] = callback
+
+    def _event(self, event):
+        assert event["channel"] == self.chanid
+        tag = event["delivery_info"]["consumer_tag"]
+        if tag in self._callbacks:
+            message = Message(event["body"],
+                              event["properties"],
+                              event["delivery_info"],
+                              channel=self)
+            self._callbacks[tag](message)
+
+    def basic_ack(self, delivery_tag, multiple=False):
+        return self.conn._basic_ack(delivery_tag, multiple, self.chanid)
 
     def basic_publish(self, message, exchange="", routing_key="",
             mandatory=False, immediate=False):
@@ -69,7 +96,7 @@ class Channel(object):
 
 class Connection(_pyrabbitmq.connection):
     curchan = 0
-    channels = set()
+    channels = {}
 
     def __init__(self, hostname="localhost", port=5672, userid="guest",
             password="guest", vhost="/"):
@@ -82,15 +109,20 @@ class Connection(_pyrabbitmq.connection):
                                      userid=userid, password=password,
                                      vhost=vhost)
 
+    def drain_events(self):
+        event = self._basic_recv()
+        if event is not None:
+            self.channels[event["channel"]]._event(event)
+
     def channel(self):
         # TODO need to reuse channel numbers.
         self.curchan += 1
         self._channel_open(self.curchan)
         channel = Channel(self, self.curchan)
-        self.channels.add(channel)
+        self.channels[channel.chanid] = channel
         return channel
 
     def _remove_channel(self, channel):
         self._channel_close(channel.chanid)
-        self.channels.remove(channel)
+        self.channels.pop(channel.chanid, None)
 
