@@ -2,6 +2,11 @@
  pylibrabbitmq - Python bindings to librabbitmq-c
 ==================================================
 
+:Version: 0.0.2
+:Download: http://pypi.python.org/pypi/pylibrabbitmq/
+:Code: http://github.com/ask/pylibrabbitmq/
+:Keywords: rabbitmq, amqp, messaging, librabbitmq, rabbitmq-c, python
+
 .. contents::
     :local:
 
