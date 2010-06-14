@@ -114,8 +114,8 @@ class Connection(_pyrabbitmq.connection):
     channels = {}
     channel_max = 131072
 
-    def __init__(self, hostname="localhost", port=5672, userid="guest",
-            password="guest", vhost="/"):
+    def __init__(self, hostname=None, port=5672, userid=None,
+            password=None, vhost="/"):
         self.hostname = hostname
         self.port = port
         self.userid = userid
