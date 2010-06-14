@@ -112,7 +112,9 @@ class Channel(object):
 
 class Connection(_pyrabbitmq.connection):
     channels = {}
-    channel_max = 131072
+    channel_max = 0xffff
+    frame_max = 131072
+    heartbeat = 0
 
     def __init__(self, hostname=None, port=5672, userid=None,
             password=None, vhost="/"):
@@ -123,7 +125,10 @@ class Connection(_pyrabbitmq.connection):
         self.vhost = vhost
         super(Connection, self).__init__(hostname=hostname, port=port,
                                      userid=userid, password=password,
-                                     vhost=vhost)
+                                     vhost=vhost,
+                                     channel_max=self.channel_max,
+                                     frame_max=self.frame_max,
+                                     heartbeat=self.heartbeat)
 
     def drain_events(self):
         event = self._basic_recv()

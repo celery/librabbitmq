@@ -111,12 +111,17 @@ static int PyRabbitMQ_Connection_init(PyRabbitMQ_Connection *self,
     char *userid;
     char *password;
     char *vhost;
+    int channel_max = 0xffff;
+    int frame_max = 131072;
+    int heartbeat = 0;
     int port;
 
     static char *kwlist[] = {"hostname", "userid", "password",
-                             "vhost", "port", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|ssssi", kwlist,
-                &hostname, &userid, &password, &vhost, &port)) {
+                             "vhost", "port", "channel_max",
+                             "frame_max", "heartbeat", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|ssssiiii", kwlist,
+                &hostname, &userid, &password, &vhost, &port,
+                &channel_max, &frame_max, &heartbeat)) {
         return -1;
     }
 
@@ -125,6 +130,9 @@ static int PyRabbitMQ_Connection_init(PyRabbitMQ_Connection *self,
     self->password = password;
     self->vhost = vhost;
     self->port = port;
+    self->channel_max = channel_max;
+    self->frame_max = frame_max;
+    self->heartbeat = heartbeat;
 
     return 0;
 }
@@ -142,7 +150,8 @@ static PyObject *PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self) {
     if (!PyRabbitMQ_handle_error(self->sockfd, "Couldn't open socket"))
         goto error;
     amqp_set_sockfd(self->conn, self->sockfd);
-    reply = amqp_login(self->conn, self->vhost, 0, 131072, 0,
+    reply = amqp_login(self->conn, self->vhost, self->channel_max,
+                       self->frame_max, self->heartbeat,
                        AMQP_SASL_METHOD_PLAIN, self->userid, self->password);
     if (!PyRabbitMQ_handle_amqp_error(reply, "Couldn't log in",
             PyRabbitMQExc_ConnectionError))

@@ -27,6 +27,9 @@ typedef struct {
     char *password;
     char *vhost;
     int port;
+    int frame_max;
+    int channel_max;
+    int heartbeat;
 
     int sockfd;
     int connected;
