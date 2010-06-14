@@ -129,6 +129,7 @@ class Connection(_pyrabbitmq.connection):
                                      channel_max=self.channel_max,
                                      frame_max=self.frame_max,
                                      heartbeat=self.heartbeat)
+        self.connect()
 
     def drain_events(self):
         event = self._basic_recv()

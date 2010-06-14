@@ -41,7 +41,6 @@ Examples
 
     >>> conn = Connection(hostname="localhost", port=5672, userid="guest",
     ...                   password="guest", vhost="/")
-    >>> conn.connect()
 
     >>> channel = conn.channel()
     >>> channel.exchange_declare(exchange, type, ...)
