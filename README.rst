@@ -39,8 +39,8 @@ Examples
 
     >>> from pylibrabbitmq import Connection, Message
 
-    >>> conn = Connection(hostname="localhost", port=5672, userid="guest",
-    ...                   password="guest", vhost="/")
+    >>> conn = Connection(host="localhost", userid="guest",
+    ...                   password="guest", virtual_host="/")
 
     >>> channel = conn.channel()
     >>> channel.exchange_declare(exchange, type, ...)

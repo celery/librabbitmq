@@ -7,8 +7,8 @@ TEST_QUEUE = "pyrabbit.testq"
 class test_Channel(unittest.TestCase):
 
     def setUp(self):
-        self.connection = Connection("localhost", 5672, "guest", "guest", "/")
-        self.connection.connect()
+        self.connection = Connection(host="localhost:5672", userid="guest",
+                                     password="guest", virtual_host="/")
         self.channel = self.connection.channel()
         self._queue_declare()
 

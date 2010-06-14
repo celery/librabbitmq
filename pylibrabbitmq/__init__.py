@@ -111,25 +111,38 @@ class Channel(object):
 
 
 class Connection(_pyrabbitmq.connection):
+    """Create a connection to the specified host, which should be
+    a ``'host[:port]'`` string, such as ``'localhost'``, or ``'1.2.3.4:5672'``
+
+    Host defaults to ``'localhost'``, if a port is not specified
+    then 5672 is used.
+
+    """
     channels = {}
     channel_max = 0xffff
     frame_max = 131072
     heartbeat = 0
 
-    def __init__(self, hostname=None, port=5672, userid=None,
-            password=None, vhost="/"):
-        self.hostname = hostname
-        self.port = port
+    def __init__(self, host="localhost", userid="guest", password="guest",
+            virtual_host="/", port=5672, **kwargs):
+
+        if ":" in host:
+            host, port = host.split(":")
+
+        self.hostname = host
+        self.port = int(port)
         self.userid = userid
         self.password = password
-        self.vhost = vhost
-        super(Connection, self).__init__(hostname=hostname, port=port,
+        self.virtual_host = virtual_host
+        print("FRAME_MAX: %s" % self.frame_max)
+        print("HEARTBEAT: %s" % self.heartbeat)
+        super(Connection, self).__init__(hostname=host, port=self.port,
                                      userid=userid, password=password,
-                                     vhost=vhost,
+                                     virtual_host=virtual_host,
                                      channel_max=self.channel_max,
                                      frame_max=self.frame_max,
                                      heartbeat=self.heartbeat)
-        self.connect()
+        self._do_connect()
 
     def drain_events(self):
         event = self._basic_recv()

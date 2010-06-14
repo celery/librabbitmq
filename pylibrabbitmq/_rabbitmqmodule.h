@@ -25,7 +25,7 @@ typedef struct {
     char *hostname;
     char *userid;
     char *password;
-    char *vhost;
+    char *virtual_host;
     int port;
     int frame_max;
     int channel_max;
@@ -74,7 +74,7 @@ static PyObject *PyRabbitMQ_Connection_basic_consume(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
 
 static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
-    {"connect", (PyCFunction)PyRabbitMQ_Connection_connect, METH_NOARGS,
+    {"_do_connect", (PyCFunction)PyRabbitMQ_Connection_connect, METH_NOARGS,
         "Establish connection to the server."},
     {"close", (PyCFunction)PyRabbitMQ_Connection_close, METH_NOARGS,
         "Close connection."},
