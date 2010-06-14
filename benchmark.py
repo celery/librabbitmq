@@ -2,19 +2,6 @@ import timeit
 
 QS = ("amqplib.benchmark", "librabbit.benchmark")
 
-def purge():
-    from pylibrabbitmq import Connection, ChannelError
-    connection = Connection(hostname="localhost", userid="guest",
-        password="guest", virtual_host="/")
-    channel = connection.channel()
-    for queue in QS:
-        print("> queue.purge(%s)" % queue)
-        try:
-            channel.queue_purge(queue, no_wait=True)
-        except ChannelError:
-            pass
-    channel.close()
-    connection.close()
 
 INIT_COMMON = """
 connection = amqp.Connection(hostname="localhost", userid="guest",

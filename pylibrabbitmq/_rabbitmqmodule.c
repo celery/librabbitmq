@@ -672,17 +672,16 @@ static PyObject *PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self
     char *routing_key = NULL;
     int mandatory = 0;
     int immediate = 0;
-    char *message = 0;
+    char *body = 0;
+    PY_SIZE_TYPE body_size;
     amqp_basic_properties_t props;
     PyObject *propdict;
-    PY_SIZE_TYPE message_size;
 
-    static char *kwlist[] = {"exchange", "routing_key", "message",
-                             "channel", "mandatory", "immediate",
-                             "properties", NULL};
-    if (PyArg_ParseTupleAndKeywords(args, kwargs, "sss#iiiO", kwlist,
-                &exchange, &routing_key, &message, &message_size,
-                &channel, &mandatory, &immediate, &propdict)) {
+    static char *kwlist[] = {"channel", "body", "exchange", "routing_key",
+                             "properties", "mandatory", "immediate", NULL};
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "is#ssO|ii", kwlist,
+                &channel, &body, &body_size, &exchange, &routing_key,
+                &propdict, &mandatory, &immediate)) {
 
         PyDict_to_basic_properties(propdict, &props);
 
@@ -693,7 +692,7 @@ static PyObject *PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self
                            (amqp_boolean_t)mandatory,
                            (amqp_boolean_t)immediate,
                            &props,
-                           (amqp_bytes_t){.len = message_size, .bytes=message});
+                           (amqp_bytes_t){.len = body_size, .bytes=body});
         Py_END_ALLOW_THREADS;
 
 

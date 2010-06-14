@@ -76,13 +76,9 @@ class Channel(object):
 
     def basic_publish(self, message, exchange="", routing_key="",
             mandatory=False, immediate=False):
-        return self.conn._basic_publish(exchange=exchange,
-                routing_key=routing_key,
-                message=message.body,
-                properties=message.properties,
-                channel=self.channel_id,
-                mandatory=mandatory,
-                immediate=immediate)
+        return self.conn._basic_publish(self.channel_id,
+                message.body, exchange, routing_key, message.properties,
+                mandatory, immediate)
 
     def queue_purge(self, queue, no_wait=False):
         return self.conn._queue_purge(queue, no_wait, self.channel_id)
