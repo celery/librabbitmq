@@ -6,7 +6,12 @@
 #include "_rabbitmqmodule.h"
 #include "pylibrabbitmq_distmeta.h"
 
-
+#define PyDICT_SETSTR_DECREF(dict, key, value, stmt)  \
+    ({                                          \
+        value = stmt;                           \
+        PyDict_SetItemString(dict, key, value); \
+        Py_DECREF(value);                       \
+    })
 
 /* handle_error */
 int PyRabbitMQ_handle_error(int ret, char const *context) {
@@ -245,61 +250,63 @@ error:
 void basic_properties_to_PyDict(amqp_basic_properties_t *props,
         PyObject *p) {
 
+    PyObject *value = NULL;
+
     if (props->_flags & AMQP_BASIC_CONTENT_TYPE_FLAG) {
-        PyDict_SetItemString(p, "content_type",
-            PyString_FromStringAndSize(props->content_type.bytes,
-                props->content_type.len));
+        PyDICT_SETSTR_DECREF(p, "content_type", value,
+                PyString_FromStringAndSize(props->content_type.bytes,
+                    props->content_type.len));
     }
     if (props->_flags & AMQP_BASIC_CONTENT_ENCODING_FLAG) {
-        PyDict_SetItemString(p, "content_encoding",
+        PyDICT_SETSTR_DECREF(p, "content_encoding", value,
             PyString_FromStringAndSize(props->content_encoding.bytes,
                 props->content_encoding.len));
     }
     if (props->_flags & AMQP_BASIC_CORRELATION_ID_FLAG) {
-        PyDict_SetItemString(p, "correlation_id",
+        PyDICT_SETSTR_DECREF(p, "correlation_id", value,
             PyString_FromStringAndSize(props->correlation_id.bytes,
                 props->correlation_id.len));
     }
     if (props->_flags & AMQP_BASIC_REPLY_TO_FLAG) {
-        PyDict_SetItemString(p, "reply_to",
+        PyDICT_SETSTR_DECREF(p, "reply_to", value,
             PyString_FromStringAndSize(props->reply_to.bytes,
-                props->reply_to.len));
+                    props->reply_to.len));
     }
     if (props->_flags & AMQP_BASIC_EXPIRATION_FLAG) {
-        PyDict_SetItemString(p, "expiration",
+        PyDICT_SETSTR_DECREF(p, "expiration", value,
             PyString_FromStringAndSize(props->expiration.bytes,
                 props->expiration.len));
     }
     if (props->_flags & AMQP_BASIC_MESSAGE_ID_FLAG) {
-        PyDict_SetItemString(p, "message_id",
+        PyDICT_SETSTR_DECREF(p, "message_id", value,
             PyString_FromStringAndSize(props->message_id.bytes,
                 props->message_id.len));
     }
     if (props->_flags & AMQP_BASIC_TYPE_FLAG) {
-        PyDict_SetItemString(p, "type",
+        PyDICT_SETSTR_DECREF(p, "type", value,
             PyString_FromStringAndSize(props->type.bytes,
                 props->type.len));
     }
     if (props->_flags & AMQP_BASIC_USER_ID_FLAG) {
-        PyDict_SetItemString(p, "user_id",
+        PyDICT_SETSTR_DECREF(p, "user_id", value,
             PyString_FromStringAndSize(props->user_id.bytes,
-                props->user_id.len));
+               props->user_id.len));
     }
     if (props->_flags & AMQP_BASIC_APP_ID_FLAG) {
-        PyDict_SetItemString(p, "app_id",
+        PyDICT_SETSTR_DECREF(p, "app_id", value,
             PyString_FromStringAndSize(props->app_id.bytes,
                 props->app_id.len));
     }
     if (props->_flags & AMQP_BASIC_DELIVERY_MODE_FLAG) {
-        PyDict_SetItemString(p, "delivery_mode",
+        PyDICT_SETSTR_DECREF(p, "delivery_mode", value,
             PyInt_FromLong(props->delivery_mode));
     }
     if (props->_flags & AMQP_BASIC_PRIORITY_FLAG) {
-        PyDict_SetItemString(p, "priority",
+        PyDICT_SETSTR_DECREF(p, "priority", value,
             PyInt_FromLong(props->priority));
     }
     if (props->_flags & AMQP_BASIC_TIMESTAMP_FLAG) {
-        PyDict_SetItemString(p, "timestamp",
+        PyDICT_SETSTR_DECREF(p, "timestamp", value,
             PyInt_FromLong(props->timestamp));
     }
 }
@@ -371,36 +378,52 @@ int PyRabbitMQ_recv(PyObject *p, amqp_connection_state_t conn, int piggyback) {
     size_t body_target;
     size_t body_received;
     int retval = 0;
+    memset(&props, 0, sizeof(props));
+    PyGILState_STATE gstate;
 
     while (1) {
-        PyObject *payload;
-        PyObject *propdict;
+        PyObject *payload = NULL;
+        PyObject *propdict = NULL;
+        PyObject *value = NULL;
 
         if (!piggyback) {
-            PyObject *delivery_info;
+            PyObject *delivery_info = NULL;
 
-            Py_BEGIN_ALLOW_THREADS;
+            gstate = PyGILState_Ensure();
+            PyGILState_release(gstate);
             amqp_maybe_release_buffers(conn);
             retval = amqp_simple_wait_frame(conn, &frame);
-            Py_END_ALLOW_THREADS;
+            gstate = PyGILState_Ensure();
             if (retval <= 0) break;
-            if (frame.frame_type != AMQP_FRAME_METHOD) continue;
-            if (frame.payload.method.id != AMQP_BASIC_DELIVER_METHOD) continue;
+            if (frame.frame_type != AMQP_FRAME_METHOD
+                    || frame.payload.method.id != AMQP_BASIC_DELIVER_METHOD)
+                continue;
 
-            delivery_info = PyDict_New();
-            PyDict_SetItemString(p, "delivery_info", delivery_info);
+
             deliver = (amqp_basic_deliver_t *)frame.payload.method.decoded;
-            PyDict_SetItemString(delivery_info, "delivery_tag",
-                    PYINT_FROM_SSIZE_T((PY_SIZE_TYPE)deliver->delivery_tag));
-            PyDict_SetItemString(delivery_info, "consumer_tag",
+            // p["delivery_info"] = {}
+            PyDICT_SETSTR_DECREF(p, "delivery_info", delivery_info,
+                    PyDict_New());
+
+            // p["delivery_info"]["delivery_tag"]
+            PyDICT_SETSTR_DECREF(delivery_info, "delivery_tag", value,
+                PYINT_FROM_SSIZE_T((PY_SIZE_TYPE)deliver->delivery_tag));
+
+            // p["delivery_info"]["consumer_tag"]
+            PyDICT_SETSTR_DECREF(delivery_info, "consumer_tag", value,
                 PyString_FromStringAndSize(deliver->consumer_tag.bytes,
                     deliver->consumer_tag.len));
-            PyDict_SetItemString(delivery_info, "exchange",
+
+            // p["delivery_info"]["exchange"]
+            PyDICT_SETSTR_DECREF(delivery_info, "exchange", value,
                 PyString_FromStringAndSize(deliver->exchange.bytes,
                     deliver->exchange.len));
-            PyDict_SetItemString(delivery_info, "routing_key",
+
+            // p["delivery_info"]["routing_key"]
+            PyDICT_SETSTR_DECREF(delivery_info, "routing_key", value,
                 PyString_FromStringAndSize(deliver->routing_key.bytes,
                     deliver->routing_key.len));
+
             piggyback = 0;
         }
 
@@ -419,18 +442,22 @@ int PyRabbitMQ_recv(PyObject *p, amqp_connection_state_t conn, int piggyback) {
 
         }
 
-        PyDict_SetItemString(p, "channel",
+        // p["channel"]
+        PyDICT_SETSTR_DECREF(p, "channel", value,
                 PyInt_FromLong((long)frame.channel));
 
         propdict = PyDict_New();
-        PyDict_SetItemString(p, "properties", propdict);
+
+        // p["properties"] = {}
         props = (amqp_basic_properties_t *)frame.payload.properties.decoded;
+        PyDICT_SETSTR_DECREF(p, "properties", propdict,
+                PyDict_New());
         basic_properties_to_PyDict(props, propdict);
 
+        // p["body"]
         body_target = frame.payload.properties.body_size;
         body_received = 0;
         payload = PyString_FromStringAndSize("", 0);
-
         while (body_received < body_target) {
             PyObject *part;
             Py_BEGIN_ALLOW_THREADS;
@@ -441,6 +468,7 @@ int PyRabbitMQ_recv(PyObject *p, amqp_connection_state_t conn, int piggyback) {
             if (frame.frame_type != AMQP_FRAME_BODY) {
                 PyErr_SetString(PyRabbitMQExc_ChannelError,
                     "Expected body, got unexpected frame");
+                return -1;
             }
 
             body_received += frame.payload.body_fragment.len;
@@ -453,8 +481,10 @@ int PyRabbitMQ_recv(PyObject *p, amqp_connection_state_t conn, int piggyback) {
         }
 
         PyDict_SetItemString(p, "body", payload);
+        Py_DECREF(payload);
         break;
     }
+    amqp_maybe_release_buffers(conn);
     return retval;
 
 }
@@ -565,13 +595,13 @@ static PyObject *PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *self
             goto error;
 
         PyObject *p = PyDict_New();
-        PyDict_SetItemString(p, "message_count",
-                PyInt_FromLong((long)ok->message_count));
-        PyDict_SetItemString(p, "consumer_count",
-                PyInt_FromLong((long)ok->consumer_count));
-        PyDict_SetItemString(p, "queue",
-                PyString_FromStringAndSize(ok->queue.bytes,
-                    ok->queue.len));
+        PyObject *value = NULL;
+        PyDICT_SETSTR_DECREF(p, "message_count", value,
+            PyInt_FromLong((long)ok->message_count));
+        PyDICT_SETSTR_DECREF(p, "consumer_count", value,
+            PyInt_FromLong((long)ok->consumer_count));
+        PyDICT_SETSTR_DECREF(p, "queue", value,
+            PyString_FromStringAndSize(ok->queue.bytes, ok->queue.len));
         return p;
     }
     else {
@@ -683,6 +713,7 @@ static PyObject *PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self
                 &channel, &body, &body_size, &exchange, &routing_key,
                 &propdict, &mandatory, &immediate)) {
 
+        memset(&props, 0, sizeof(props));
         PyDict_to_basic_properties(propdict, &props);
 
         Py_BEGIN_ALLOW_THREADS;
@@ -837,20 +868,34 @@ static PyObject *PyRabbitMQ_Connection_basic_get(PyRabbitMQ_Connection *self,
         if (reply.reply.id == AMQP_BASIC_GET_OK_METHOD) {
             amqp_basic_get_ok_t *ok = (amqp_basic_get_ok_t *)reply.reply.decoded;
             PyObject *p = PyDict_New();
-            PyObject *delivery_info = PyDict_New();
-            PyDict_SetItemString(p, "delivery_info", delivery_info);
-            PyDict_SetItemString(delivery_info, "delivery_tag",
-                    PYINT_FROM_SSIZE_T((PY_SIZE_TYPE)ok->delivery_tag));
-            PyDict_SetItemString(delivery_info, "redelivered",
-                    PyInt_FromLong((long)ok->redelivered));
-            PyDict_SetItemString(delivery_info, "exchange",
-                    PyString_FromStringAndSize(ok->exchange.bytes,
-                        ok->exchange.len));
-            PyDict_SetItemString(delivery_info, "routing_key",
-                    PyString_FromStringAndSize(ok->routing_key.bytes,
-                        ok->routing_key.len));
-            PyDict_SetItemString(delivery_info, "message_count",
-                    PyInt_FromLong((long)ok->message_count));
+            PyObject *delivery_info = NULL;
+            PyObject *value = NULL;
+
+            // p["delivery_info"] = {}
+            PyDICT_SETSTR_DECREF(p, "delivery_info", delivery_info,
+                    PyDict_New());
+
+            // p["delivery_info"]["delivery_tag"]
+            PyDICT_SETSTR_DECREF(delivery_info, "delivery_tag", value,
+                PYINT_FROM_SSIZE_T((PY_SIZE_TYPE)ok->delivery_tag));
+
+            // p["delivery_info"]["redelivered"]
+            PyDICT_SETSTR_DECREF(delivery_info, "redelivered", value,
+                PyInt_FromLong((long)ok->redelivered));
+
+            // p["delivery_info"]["exchange"]
+            PyDICT_SETSTR_DECREF(delivery_info, "exchange", value,
+                PyString_FromStringAndSize(ok->exchange.bytes,
+                    ok->exchange.len));
+
+            // p["delivery_info"]["routing_key"]
+            PyDICT_SETSTR_DECREF(delivery_info, "routing_key", value,
+                PyString_FromStringAndSize(ok->routing_key.bytes,
+                    ok->routing_key.len));
+
+            // p["delivery_info"]["message_count"]
+            PyDICT_SETSTR_DECREF(delivery_info, "message_count", value,
+                PyInt_FromLong((long)ok->message_count));
 
             if (amqp_data_in_buffer(self->conn)) {
                 if (PyRabbitMQ_recv(p, self->conn, 1) < 0) {
