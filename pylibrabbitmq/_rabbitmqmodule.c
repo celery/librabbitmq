@@ -390,7 +390,7 @@ int PyRabbitMQ_recv(PyObject *p, amqp_connection_state_t conn, int piggyback) {
             PyObject *delivery_info = NULL;
 
             gstate = PyGILState_Ensure();
-            PyGILState_release(gstate);
+            PyGILState_Release(gstate);
             amqp_maybe_release_buffers(conn);
             retval = amqp_simple_wait_frame(conn, &frame);
             gstate = PyGILState_Ensure();
