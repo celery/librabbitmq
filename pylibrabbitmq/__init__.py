@@ -152,7 +152,7 @@ class Connection(_pyrabbitmq.connection):
 
     def drain_events(self, timeout=None):
         event = self._basic_recv()
-        if event is not None:
+        if event:
             self.channels[event["channel"]]._event(event)
 
     def channel(self, channel_id=None):
