@@ -36,14 +36,20 @@ class Message(object):
 class Channel(object):
     is_open = False
 
-    def __init__(self, conn, channel_id):
-        self.conn = conn
+    def __init__(self, connection, channel_id):
+        self.connection = connection
         self.channel_id = channel_id
         self.next_consumer_tag = count(1).next
         self._callbacks = {}
 
+    def basic_qos(self, *args):
+        pass
+
+    def flow(self, enabled):
+        pass
+
     def basic_get(self, queue="", noack=False):
-        frame = self.conn._basic_get(queue, noack, self.channel_id)
+        frame = self.connection._basic_get(queue, noack, self.channel_id)
         if frame is not None:
             return(Message(frame["body"],
                            frame["properties"],
@@ -51,10 +57,10 @@ class Channel(object):
                            self))
 
     def basic_consume(self, queue="", consumer_tag=None, no_local=False,
-            no_ack=False, exclusive=False, callback=None):
+            no_ack=False, exclusive=False, callback=None, nowait=False):
         if consumer_tag is None:
             consumer_tag = str(self.next_consumer_tag())
-        self.conn._basic_consume(queue, consumer_tag, no_local,
+        self.connection._basic_consume(queue, consumer_tag, no_local,
                 no_ack, exclusive, self.channel_id)
         self._callbacks[consumer_tag] = callback
 
@@ -69,41 +75,45 @@ class Channel(object):
             self._callbacks[tag](message)
 
     def basic_ack(self, delivery_tag, multiple=False):
-        return self.conn._basic_ack(delivery_tag, multiple, self.channel_id)
+        return self.connection._basic_ack(delivery_tag, multiple,
+                                          self.channel_id)
 
     def basic_cancel(self, *args, **kwargs):
         pass
 
     def basic_publish(self, message, exchange="", routing_key="",
             mandatory=False, immediate=False):
-        return self.conn._basic_publish(self.channel_id,
+        return self.connection._basic_publish(self.channel_id,
                 message.body, exchange, routing_key, message.properties,
                 mandatory, immediate)
 
-    def queue_purge(self, queue, no_wait=False):
-        return self.conn._queue_purge(queue, no_wait, self.channel_id)
+    def queue_purge(self, queue, nowait=False):
+        return self.connection._queue_purge(queue, nowait, self.channel_id)
 
     def exchange_declare(self, exchange="", type="direct",
-            passive=False, durable=False, auto_delete=False, arguments=None):
-        return self.conn._exchange_declare(exchange, type,
+            passive=False, durable=False, auto_delete=False, arguments=None,
+            nowait=False):
+        return self.connection._exchange_declare(exchange, type,
                 self.channel_id, passive, durable, auto_delete)
 
     def queue_declare(self, queue="", passive=False, durable=False,
-            exclusive=False, auto_delete=False, arguments=None):
-        return self.conn._queue_declare(queue,
+            exclusive=False, auto_delete=False, arguments=None,
+            nowait=False):
+        return self.connection._queue_declare(queue,
                 self.channel_id, passive, durable, exclusive, auto_delete)
 
-    def queue_bind(self, queue="", exchange="", routing_key="", arguments=None):
-        return self.conn._queue_bind(queue, exchange, routing_key,
+    def queue_bind(self, queue="", exchange="", routing_key="",
+            arguments=None, nowait=False):
+        return self.connection._queue_bind(queue, exchange, routing_key,
                 self.channel_id)
 
-    def queue_unbind(self, queue="", exchange="", binding_key=""):
-        return self.conn._queue_unbind(queue, exchange, binding_key,
+    def queue_unbind(self, queue="", exchange="", binding_key="",
+            nowait=False):
+        return self.connection._queue_unbind(queue, exchange, binding_key,
                 self.channel_id)
 
     def close(self):
-        self.conn._remove_channel(self)
-
+        self.connection._remove_channel(self)
 
 
 class Connection(_pyrabbitmq.connection):
@@ -114,6 +124,8 @@ class Connection(_pyrabbitmq.connection):
     then 5672 is used.
 
     """
+    Channel = Channel
+
     channels = {}
     channel_max = 0xffff
     frame_max = 131072
@@ -138,14 +150,10 @@ class Connection(_pyrabbitmq.connection):
                                      heartbeat=self.heartbeat)
         self._do_connect()
 
-    def drain_events(self):
+    def drain_events(self, timeout=None):
         event = self._basic_recv()
         if event is not None:
             self.channels[event["channel"]]._event(event)
-
-    def wait_multi(self, *args, **kwargs):
-        # for celery amqp backend
-        self.drain_events()
 
     def channel(self, channel_id=None):
         if channel_id is None:
@@ -154,14 +162,17 @@ class Connection(_pyrabbitmq.connection):
             return self.channels[channel_id]
 
         self._channel_open(channel_id)
-        channel = Channel(self, channel_id)
+        channel = self.Channel(self, channel_id)
         channel.is_open = True
         self.channels[channel_id] = channel
         return channel
 
     def _remove_channel(self, channel):
         channel.is_open = False
-        self._channel_close(channel.channel_id)
+        try:
+            self._channel_close(channel.channel_id)
+        except ChannelError:
+            pass
         self.channels.pop(channel.channel_id, None)
 
     def _get_free_channel_id(self):
