@@ -796,6 +796,41 @@ error:
     return 0;
 }
 
+/* Connection._basic_reject */
+static PyObject *PyRabbitMQ_Connection_basic_reject(PyRabbitMQ_Connection *self,
+        PyObject *args, PyObject *kwargs) {
+    int channel = 0;
+    int multiple = 0;
+    PyObject *delivery_tag = NULL;
+    PY_SIZE_TYPE tag;
+    int ret;
+
+    static char *kwlist[] = {"delivery_tag", "multiple", "channel", NULL};
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "Oii", kwlist,
+                &delivery_tag, &multiple, &channel)) {
+
+        tag = PYINT_AS_SSIZE_T(delivery_tag);
+        if (tag == -1 && PyErr_Occurred() != NULL)
+            goto error;
+
+        Py_BEGIN_ALLOW_THREADS;
+        ret = amqp_basic_reject(self->conn, channel,
+                           (uint64_t)tag,
+                           (amqp_boolean_t)multiple);
+        Py_END_ALLOW_THREADS;
+
+        if (!PyRabbitMQ_handle_error(ret, "Basic Nack"))
+            goto error;
+    }
+    else {
+        goto error;
+    }
+
+    Py_RETURN_NONE;
+
+error:
+    return 0;
+}
 
 /* Connection._basic_consume */
 static PyObject *PyRabbitMQ_Connection_basic_consume(PyRabbitMQ_Connection *self,
@@ -830,6 +865,40 @@ static PyObject *PyRabbitMQ_Connection_basic_consume(PyRabbitMQ_Connection *self
 
         return PyString_FromStringAndSize(ok->consumer_tag.bytes,
                                           ok->consumer_tag.len);
+    }
+    else {
+        goto error;
+    }
+
+    Py_RETURN_NONE;
+
+error:
+    return 0;
+}
+
+/* Connection._basic_qos */
+static PyObject *PyRabbitMQ_Connection_basic_qos(PyRabbitMQ_Connection *self,
+        PyObject *args, PyObject *kwargs) {
+    int channel = 0;
+    int prefetch_size;
+    short prefetch_count;
+    int _global = 0;
+    int ret;
+
+    static char *kwlist[] = {"prefetch_size", "prefetch_count", "_global", "channel", NULL};
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "iiii", kwlist, &prefetch_size, 
+                &prefetch_count, &_global, &channel)) {
+
+        Py_BEGIN_ALLOW_THREADS;
+        ret = amqp_basic_qos(self->conn, channel,
+                           (uint32_t)prefetch_size,
+                           (uint16_t)prefetch_count,
+                           (amqp_boolean_t)_global);
+        Py_END_ALLOW_THREADS;
+
+        if (!PyRabbitMQ_handle_error(ret, "Basic Qos"))
+            goto error;
+
     }
     else {
         goto error;

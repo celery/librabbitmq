@@ -32,6 +32,9 @@ class Message(object):
     def ack(self):
         return self.channel.basic_ack(self.delivery_info["delivery_tag"])
 
+    def reject(self):
+        return self.channel.basic_reject(self.delivery_info["delivery_tag"])
+
 
 class Channel(object):
     is_open = False
@@ -42,8 +45,9 @@ class Channel(object):
         self.next_consumer_tag = count(1).next
         self._callbacks = {}
 
-    def basic_qos(self, *args):
-        pass
+    def basic_qos(self, prefetch_size=0, prefetch_count=0, _global=False):
+        return self.connection._basic_qos(prefetch_size, prefetch_count, _global,
+                self.channel_id)
 
     def flow(self, enabled):
         pass
@@ -77,6 +81,10 @@ class Channel(object):
 
     def basic_ack(self, delivery_tag, multiple=False):
         return self.connection._basic_ack(delivery_tag, multiple,
+                                          self.channel_id)
+
+    def basic_reject(self, delivery_tag, requeue=True):
+        return self.connection._basic_reject(delivery_tag, requeue,
                                           self.channel_id)
 
     def basic_cancel(self, *args, **kwargs):

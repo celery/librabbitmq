@@ -68,6 +68,10 @@ static PyObject *PyRabbitMQ_Connection_queue_purge(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_basic_ack(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
+static PyObject *PyRabbitMQ_Connection_basic_qos(PyRabbitMQ_Connection *,
+        PyObject *, PyObject *);
+static PyObject *PyRabbitMQ_Connection_basic_reject(PyRabbitMQ_Connection *,
+        PyObject *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_basic_recv(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_basic_consume(PyRabbitMQ_Connection *,
@@ -106,6 +110,12 @@ static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
     {"_basic_ack", (PyCFunction)PyRabbitMQ_Connection_basic_ack,
         METH_VARARGS|METH_KEYWORDS,
         "basic.ack"},
+    {"_basic_reject", (PyCFunction)PyRabbitMQ_Connection_basic_reject,
+        METH_VARARGS|METH_KEYWORDS,
+        "basic.reject"},
+    {"_basic_qos", (PyCFunction)PyRabbitMQ_Connection_basic_qos,
+        METH_VARARGS|METH_KEYWORDS,
+        "basic.qos"},
     {"_basic_recv", (PyCFunction)PyRabbitMQ_Connection_basic_recv,
         METH_VARARGS|METH_KEYWORDS,
         "recv"},
