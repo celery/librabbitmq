@@ -5,6 +5,12 @@
 .. contents::
     :local:
 
+0.3.0
+=====
+:release-date: 2011-07-28 04:00 P.M BST
+
+* Adds support for ``basic_reject``, and ``basic_qos`` (Issue #1).
+
 0.0.1
 =====
 :release-date: NOT RELEASED
