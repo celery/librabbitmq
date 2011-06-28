@@ -1,6 +1,7 @@
+import socket
 import unittest2 as unittest
 
-from pylibrabbitmq import Message, Connection
+from pylibrabbitmq import Message, Connection, ConnectionError
 TEST_QUEUE = "pyrabbit.testq"
 
 
@@ -54,6 +55,11 @@ class test_Channel(unittest.TestCase):
         x.ack()
 
     def tearDown(self):
-        self.channel.queue_purge(TEST_QUEUE)
-        self.channel.close()
-        self.connection.close()
+        if self.channel:
+            self.channel.queue_purge(TEST_QUEUE)
+            self.channel.close()
+        if self.connection:
+            try:
+                self.connection.close()
+            except ConnectionError:
+                pass
