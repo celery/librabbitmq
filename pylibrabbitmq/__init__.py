@@ -77,7 +77,8 @@ class Channel(object):
                               event["delivery_info"],
                               channel=self)
             self._callbacks[tag](message)
-        raise ChannelError("Message to unknown consumer tag %r" % (tag, ))
+        else:
+            raise ChannelError("Message to unknown consumer tag %r" % (tag, ))
 
     def basic_ack(self, delivery_tag, multiple=False):
         return self.connection._basic_ack(delivery_tag, multiple,
