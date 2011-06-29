@@ -43,6 +43,7 @@ class Channel(object):
         self.connection = connection
         self.channel_id = channel_id
         self.next_consumer_tag = count(1).next
+        self.no_ack_consumers = set()
         self._callbacks = {}
 
     def basic_qos(self, prefetch_size=0, prefetch_count=0, _global=False):
@@ -64,9 +65,13 @@ class Channel(object):
             no_ack=False, exclusive=False, callback=None, nowait=False):
         if consumer_tag is None:
             consumer_tag = str(self.next_consumer_tag())
-        self.connection._basic_consume(queue, consumer_tag, no_local,
-                no_ack, exclusive, self.channel_id)
+        consumer_tag = self.connection._basic_consume(queue, consumer_tag,
+                                                     no_local, no_ack,
+                                                     exclusive,
+                                                     self.channel_id)
         self._callbacks[consumer_tag] = callback
+        if no_ack:
+            self.no_ack_consumers.add(consumer_tag)
 
     def _event(self, event):
         assert event["channel"] == self.channel_id
@@ -88,8 +93,8 @@ class Channel(object):
         return self.connection._basic_reject(delivery_tag, requeue,
                                           self.channel_id)
 
-    def basic_cancel(self, *args, **kwargs):
-        pass
+    def basic_cancel(self, consumer_tag, **kwargs):
+        self.no_ack_consumers.discard(consumer_tag)
 
     def basic_publish(self, message, exchange="", routing_key="",
             mandatory=False, immediate=False):
