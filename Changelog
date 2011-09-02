@@ -5,6 +5,14 @@
 .. contents::
     :local:
 
+0.4.0
+=====
+:release-date: 2011-10-02 18:00 P.M BST
+
+* Adds timeout support to `drain_events`.
+
+  Timeout in seconds as a float, or :const:`None` for no timeout.
+
 0.3.0
 =====
 :release-date: 2011-07-28 04:00 P.M BST
