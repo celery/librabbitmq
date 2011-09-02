@@ -41,6 +41,7 @@ void PyDict_to_basic_properties(PyObject *, amqp_basic_properties_t *);
 /* Exceptions */
 static PyObject *PyRabbitMQExc_ConnectionError;
 static PyObject *PyRabbitMQExc_ChannelError;
+static PyObject *PyRabbitMQExc_TimeoutError;
 
 /* Connection */
 static PyRabbitMQ_Connection* PyRabbitMQ_ConnectionType_new(PyTypeObject *,
@@ -76,6 +77,8 @@ static PyObject *PyRabbitMQ_Connection_basic_recv(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_basic_consume(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
+static long long PyRabbitMQ_now_usec(void);
+static int PyRabbitMQ_wait_timeout(int, double);
 
 static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
     {"_do_connect", (PyCFunction)PyRabbitMQ_Connection_connect, METH_NOARGS,

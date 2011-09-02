@@ -1,4 +1,5 @@
-from itertools import count
+import itertools
+import socket
 
 import _pyrabbitmq
 
@@ -12,7 +13,7 @@ ConnectionError = _pyrabbitmq.ConnectionError
 ChannelError = _pyrabbitmq.ChannelError
 
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __all__ = ["Connection", "Message", "ConnectionError", "ChannelError"]
 
 
@@ -42,7 +43,7 @@ class Channel(object):
     def __init__(self, connection, channel_id):
         self.connection = connection
         self.channel_id = channel_id
-        self.next_consumer_tag = count(1).next
+        self.next_consumer_tag = itertools.count(1).next
         self.no_ack_consumers = set()
         self._callbacks = {}
 
@@ -166,7 +167,12 @@ class Connection(_pyrabbitmq.connection):
         self._do_connect()
 
     def drain_events(self, timeout=None):
-        event = self._basic_recv()
+        # we rewrite to socket.timeout here, as this is what kombu-patched
+        # amqplib uses.
+        try:
+            event = self._basic_recv(timeout=timeout and float(timeout) or 0.0)
+        except _pyrabbitmq.TimeoutError:
+            raise socket.timeout(timeout)
         if event:
             self.channels[event["channel"]]._event(event)
 

@@ -1,7 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
-
 #include <unistd.h>
+
+#include <sys/time.h>
 
 #include "_rabbitmqmodule.h"
 #include "pylibrabbitmq_distmeta.h"
@@ -886,7 +887,7 @@ static PyObject *PyRabbitMQ_Connection_basic_qos(PyRabbitMQ_Connection *self,
     int ret;
 
     static char *kwlist[] = {"prefetch_size", "prefetch_count", "_global", "channel", NULL};
-    if (PyArg_ParseTupleAndKeywords(args, kwargs, "iiii", kwlist, &prefetch_size, 
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "iiii", kwlist, &prefetch_size,
                 &prefetch_count, &_global, &channel)) {
 
         Py_BEGIN_ALLOW_THREADS;
@@ -914,22 +915,82 @@ error:
 static PyObject *PyRabbitMQ_Connection_basic_recv(PyRabbitMQ_Connection *self,
         PyObject *args, PyObject *kwargs) {
     int retval;
+    int ready = 0;
+    double timeout;
     PyObject *p;
 
-    p = PyDict_New();
-    retval = PyRabbitMQ_recv(p, self->conn, 0);
-    if (retval < 0) {
-        if (PyErr_Occurred() == NULL) {
-            PyErr_SetString(PyRabbitMQExc_ChannelError,
-                    "Bad frame read");
+    static char *kwlist[] = {"timeout", NULL};
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "d", kwlist, &timeout)) {
+        if (timeout > 0.0) {
+            ready = PyRabbitMQ_wait_timeout(self->sockfd, timeout);
+            if (ready == 0) {
+                if (PyErr_Occurred() == NULL) {
+                    PyErr_SetString(PyRabbitMQExc_TimeoutError, "timed out");
+                }
+                goto error;
+            }
+            else if (ready < 0) {
+                if (PyErr_Occurred() == NULL) {
+                    PyErr_SetFromErrno(PyExc_OSError);
+                }
+                goto error;
+            }
         }
-        Py_XDECREF(p);
+
+        p = PyDict_New();
+        retval = PyRabbitMQ_recv(p, self->conn, 0);
+        if (retval < 0) {
+            if (PyErr_Occurred() == NULL) {
+                PyErr_SetString(PyRabbitMQExc_ChannelError,
+                    "Bad frame read");
+            }
+            Py_XDECREF(p);
+            goto error;
+        }
+        return p;
+    }
+    else {
         goto error;
     }
-    return p;
 
 error:
     return 0;
+}
+
+
+static long long PyRabbitMQ_now_usec(void) {
+   struct timeval tv;
+   gettimeofday(&tv, NULL);
+   return (long long)tv.tv_sec * 1000000 + (long long)tv.tv_usec;
+ }
+
+
+static int PyRabbitMQ_wait_timeout(int sockfd, double timeout) {
+    long long t1, t2;
+    int result = 0;
+    fd_set fdset;
+    struct timeval tv;
+
+    while (timeout > 0.0) {
+        FD_ZERO(&fdset);
+        FD_SET(sockfd, &fdset);
+        tv.tv_sec = (int)timeout;
+        tv.tv_usec = (int)((timeout - tv.tv_sec) * 1e6);
+
+        t1 = PyRabbitMQ_now_usec();
+        result = select(sockfd + 1, &fdset, NULL, NULL, &tv);
+        if (result <= 0)
+            break;
+
+        if (FD_ISSET(sockfd, &fdset)) {
+            result = 1;
+            break;
+        }
+
+        t2 = PyRabbitMQ_now_usec();
+        timeout -= (double)(t2 / 1e6) - (t1 / 1e6);
+    }
+    return result;
 }
 
 
@@ -1046,6 +1107,10 @@ PyMODINIT_FUNC init_pyrabbitmq(void) {
                        (PyObject *)PyRabbitMQExc_ConnectionError);
     PyRabbitMQExc_ChannelError = PyErr_NewException(
             "_pyrabbitmq.ChannelError", NULL, NULL);
+    PyRabbitMQExc_TimeoutError = PyErr_NewException(
+            "_pyrabbitmq.TimeoutError", NULL, NULL);
+    PyModule_AddObject(module, "TimeoutError",
+                       (PyObject *)PyRabbitMQExc_TimeoutError);
     PyModule_AddObject(module, "ChannelError",
                        (PyObject *)PyRabbitMQExc_ChannelError);
 }
