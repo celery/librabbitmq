@@ -54,6 +54,55 @@ class test_Channel(unittest.TestCase):
         self.assertTrue(x.body)
         x.ack()
 
+    def test_timeout_burst(self):
+        """
+        Check that if we have a large burst of messages in our queue that we can
+        fetch them with a timeout without needing to receive any more messages
+        """
+
+        message = Message("the quick brown fox jumps over the lazy dog",
+                properties=dict(content_type="application/json",
+                                content_encoding="utf-8"))
+
+        for i in xrange(100):
+            self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
+
+        messages = []
+
+        def cb(x):
+            messages.append(x)
+            x.ack()
+
+        self.channel.basic_consume(TEST_QUEUE, callback=cb)
+        for i in xrange(100):
+            self.connection.drain_events(timeout=0.2)
+
+        self.assertEquals(len(messages), 100)
+
+    def test_timeout(self):
+        """
+        Check that our drain_events call actually times out if there are no
+        messages
+        """
+        message = Message("the quick brown fox jumps over the lazy dog",
+                properties=dict(content_type="application/json",
+                                content_encoding="utf-8"))
+
+        self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
+
+        messages = []
+
+        def cb(x):
+            messages.append(x)
+            x.ack()
+
+        self.channel.basic_consume(TEST_QUEUE, callback=cb)
+        self.connection.drain_events(timeout=0.1)
+
+        self.assertRaises(socket.timeout,
+                self.connection.drain_events, timeout=0.1)
+        self.assertEquals(len(messages), 1)
+
     def tearDown(self):
         if self.channel:
             self.channel.queue_purge(TEST_QUEUE)

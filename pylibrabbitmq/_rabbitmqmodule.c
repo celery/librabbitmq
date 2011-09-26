@@ -917,11 +917,14 @@ static PyObject *PyRabbitMQ_Connection_basic_recv(PyRabbitMQ_Connection *self,
     int retval;
     int ready = 0;
     double timeout;
+    amqp_boolean_t buffered;
     PyObject *p;
 
     static char *kwlist[] = {"timeout", NULL};
     if (PyArg_ParseTupleAndKeywords(args, kwargs, "d", kwlist, &timeout)) {
-        if (timeout > 0.0) {
+        buffered = amqp_data_in_buffer(self->conn);
+
+        if (timeout > 0.0 && !buffered) {
             ready = PyRabbitMQ_wait_timeout(self->sockfd, timeout);
             if (ready == 0) {
                 if (PyErr_Occurred() == NULL) {
