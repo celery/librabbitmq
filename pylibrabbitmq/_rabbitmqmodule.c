@@ -978,7 +978,10 @@ static int PyRabbitMQ_wait_timeout(int sockfd, double timeout) {
         tv.tv_usec = (int)((timeout - tv.tv_sec) * 1e6);
 
         t1 = PyRabbitMQ_now_usec();
+        Py_BEGIN_ALLOW_THREADS;
         result = select(sockfd + 1, &fdset, NULL, NULL, &tv);
+        Py_END_ALLOW_THREADS;
+
         if (result <= 0)
             break;
 
