@@ -48,8 +48,8 @@ class Channel(object):
         self._callbacks = {}
 
     def basic_qos(self, prefetch_size=0, prefetch_count=0, _global=False):
-        return self.connection._basic_qos(prefetch_size, prefetch_count, _global,
-                self.channel_id)
+        return self.connection._basic_qos(prefetch_size, prefetch_count,
+                                          _global, self.channel_id)
 
     def flow(self, enabled):
         pass
@@ -197,10 +197,9 @@ class Connection(_pyrabbitmq.connection):
         self.channels.pop(channel.channel_id, None)
 
     def _get_free_channel_id(self):
-        for i in xrange(1, self.channel_max+1):
+        for i in xrange(1, self.channel_max + 1):
             if i not in self.channels:
                 return i
         raise ConnectionError(
                 "No free channel ids, current=%d, channel_max=%d" % (
                     len(self.channels), self.channel_max))
-

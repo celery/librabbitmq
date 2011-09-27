@@ -5,9 +5,23 @@
 .. contents::
     :local:
 
+0.4.1
+=====
+:release-date: 2011-09-27 14:00 P.M BST
+:by: Ask Solem
+
+* The GIL was not released while waiting for events.
+
+   Fix contributed by Andrew Snowden.
+
+* ``drain_events`` would wait for socket events, even though
+  data was already buffered in client.
+
+   Fix contributed by Andrew Snowden.
+
 0.4.0
 =====
-:release-date: 2011-10-02 18:00 P.M BST
+:release-date: 2011-09-02 18:00 P.M BST
 
 * Adds timeout support to `drain_events`.
 

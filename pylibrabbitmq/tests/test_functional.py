@@ -19,11 +19,11 @@ class test_Channel(unittest.TestCase):
                                 content_encoding="utf-8"))
         self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
         self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
-        self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE);
+        self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
         self.assertGreater(self.channel.queue_purge(TEST_QUEUE), 2)
         self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
         self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
-        self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE);
+        self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
 
     def _queue_declare(self):
         self.channel.exchange_declare(TEST_QUEUE, "direct")
@@ -43,7 +43,7 @@ class test_Channel(unittest.TestCase):
         while True:
             x = self.channel.basic_get(TEST_QUEUE)
             if x:
-                break;
+                break
         self.assertIs(self.channel, x.channel)
         self.assertIn("message_count", x.delivery_info)
         self.assertIn("redelivered", x.delivery_info)
@@ -55,14 +55,13 @@ class test_Channel(unittest.TestCase):
         x.ack()
 
     def test_timeout_burst(self):
-        """
-        Check that if we have a large burst of messages in our queue that we can
-        fetch them with a timeout without needing to receive any more messages
-        """
+        """Check that if we have a large burst of messages in our queue
+        that we can fetch them with a timeout without needing to receive
+        any more messages."""
 
         message = Message("the quick brown fox jumps over the lazy dog",
-                properties=dict(content_type="application/json",
-                                content_encoding="utf-8"))
+                          properties=dict(content_type="application/json",
+                                          content_encoding="utf-8"))
 
         for i in xrange(100):
             self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
@@ -80,13 +79,11 @@ class test_Channel(unittest.TestCase):
         self.assertEquals(len(messages), 100)
 
     def test_timeout(self):
-        """
-        Check that our drain_events call actually times out if there are no
-        messages
-        """
+        """Check that our ``drain_events`` call actually times out if
+        there are no messages."""
         message = Message("the quick brown fox jumps over the lazy dog",
-                properties=dict(content_type="application/json",
-                                content_encoding="utf-8"))
+                          properties=dict(content_type="application/json",
+                                          content_encoding="utf-8"))
 
         self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
 
