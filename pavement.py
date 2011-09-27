@@ -160,7 +160,7 @@ def gitcleanforce(options):
 
 
 @task
-@needs("flakes", "autodoc", "verifyindex", "test", "gitclean")
+@needs("flakes", "test", "gitclean")
 def releaseok(options):
     pass
 
