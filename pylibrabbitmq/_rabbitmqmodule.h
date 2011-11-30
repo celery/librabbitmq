@@ -83,7 +83,7 @@ static int PyRabbitMQ_wait_timeout(int, double);
 static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
     {"_do_connect", (PyCFunction)PyRabbitMQ_Connection_connect, METH_NOARGS,
         "Establish connection to the server."},
-    {"close", (PyCFunction)PyRabbitMQ_Connection_close, METH_NOARGS,
+    {"_close", (PyCFunction)PyRabbitMQ_Connection_close, METH_NOARGS,
         "Close connection."},
     {"_channel_open", (PyCFunction)PyRabbitMQ_Connection_channel_open, METH_VARARGS,
         "Create new channel"},

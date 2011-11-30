@@ -204,3 +204,9 @@ class Connection(_pyrabbitmq.connection):
                 "No free channel ids, current=%d, channel_max=%d" % (
                     len(self.channels), self.channel_max))
 
+    def close(self):
+        try:
+            self._close()
+        except _pylibrabbitmq.ConnectionError:
+            pass
+
