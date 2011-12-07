@@ -5,9 +5,44 @@
 .. contents::
     :local:
 
+0.5.0
+=====
+:release-date: 2011-12-07 05:00 P.M GMT
+:by: Ask Solem
+
+* Adds header support.
+
+    Application headers can be added to ``properties["headers"]``.
+
+    * Sending messages:
+
+        * Supported
+            * int
+            * str  (not Unicode).
+
+        * Unsupported
+            * everything else. (see read).
+
+    * Receiving messages:
+
+        * Supported
+            * boolean: bool
+            * signed int: i8, i16, i32, i64
+            * unsigned int: u8, u16, u32, u64
+            * float: f32
+            * double: f64
+            * string: bytes
+
+        * Unsupported
+            * array
+            * timestamp
+            * table
+            * void
+            * decimal
+
 0.4.0
 =====
-:release-date: 2011-10-02 18:00 P.M BST
+:release-date: 2011-10-02 06:00 P.M BST
 
 * Adds timeout support to `drain_events`.
 
