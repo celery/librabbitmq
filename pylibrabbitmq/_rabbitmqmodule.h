@@ -36,7 +36,17 @@ typedef struct {
 } PyRabbitMQ_Connection;
 
 /* utils */
-void PyDict_to_basic_properties(PyObject *, amqp_basic_properties_t *);
+void AMQTable_SetStringValue(amqp_connection_state_t,
+        amqp_table_t *, amqp_bytes_t, amqp_bytes_t);
+
+void AMQTable_SetIntValue(amqp_connection_state_t,
+        amqp_table_t *, amqp_bytes_t, int);
+
+amqp_table_entry_t *AMQTable_AddEntry(amqp_connection_state_t,
+        amqp_table_t *, amqp_bytes_t);
+int PyDict_to_basic_properties(PyObject *, amqp_basic_properties_t *,
+                                amqp_connection_state_t);
+
 
 /* Exceptions */
 static PyObject *PyRabbitMQExc_ConnectionError;

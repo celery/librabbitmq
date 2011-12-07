@@ -207,6 +207,6 @@ class Connection(_pyrabbitmq.connection):
     def close(self):
         try:
             self._close()
-        except _pylibrabbitmq.ConnectionError:
+        except _pyrabbitmq.ConnectionError:
             pass
 
