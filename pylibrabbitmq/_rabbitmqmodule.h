@@ -67,6 +67,10 @@ static PyObject *PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_exchange_declare(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
+static PyObject *PyRabbitMQ_Connection_exchange_delete(PyRabbitMQ_Connection *,
+        PyObject *, PyObject *);
+static PyObject *PyRabbitMQ_Connection_queue_delete(PyRabbitMQ_Connection *,
+        PyObject *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_queue_bind(PyRabbitMQ_Connection *,
@@ -105,6 +109,9 @@ static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
     {"_exchange_declare", (PyCFunction)PyRabbitMQ_Connection_exchange_declare,
         METH_VARARGS|METH_KEYWORDS,
         "Declare an exchange"},
+    {"_exchange_delete", (PyCFunction)PyRabbitMQ_Connection_exchange_delete,
+        METH_VARARGS|METH_KEYWORDS,
+        "Delete an exchange"},
     {"_queue_declare", (PyCFunction)PyRabbitMQ_Connection_queue_declare,
         METH_VARARGS|METH_KEYWORDS,
         "Declare a queue"},
@@ -114,6 +121,9 @@ static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
     {"_queue_unbind", (PyCFunction)PyRabbitMQ_Connection_queue_unbind,
         METH_VARARGS|METH_KEYWORDS,
         "Unbind queue"},
+    {"_queue_delete", (PyCFunction)PyRabbitMQ_Connection_queue_delete,
+        METH_VARARGS|METH_KEYWORDS,
+        "Delete queue"},
     {"_basic_get", (PyCFunction)PyRabbitMQ_Connection_basic_get,
         METH_VARARGS|METH_KEYWORDS,
         "basic.get"},

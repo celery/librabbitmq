@@ -38,6 +38,7 @@ class Message(object):
 
 
 class Channel(object):
+    Message = Message
     is_open = False
 
     def __init__(self, connection, channel_id):
@@ -57,10 +58,10 @@ class Channel(object):
     def basic_get(self, queue="", noack=False):
         frame = self.connection._basic_get(queue, noack, self.channel_id)
         if frame is not None:
-            return(Message(frame["body"],
-                           frame["properties"],
-                           frame["delivery_info"],
-                           self))
+            return(self.Message(frame["body"],
+                                frame["properties"],
+                                frame["delivery_info"],
+                                self))
 
     def basic_consume(self, queue="", consumer_tag=None, no_local=False,
             no_ack=False, exclusive=False, callback=None, nowait=False):
@@ -78,10 +79,10 @@ class Channel(object):
         assert event["channel"] == self.channel_id
         tag = event["delivery_info"]["consumer_tag"]
         if tag in self._callbacks:
-            message = Message(event["body"],
-                              event["properties"],
-                              event["delivery_info"],
-                              channel=self)
+            message = self.Message(event["body"],
+                                   event["properties"],
+                                   event["delivery_info"],
+                                   self)
             self._callbacks[tag](message)
         else:
             raise ChannelError("Message to unknown consumer tag %r" % (tag, ))
@@ -112,6 +113,10 @@ class Channel(object):
         return self.connection._exchange_declare(exchange, type,
                 self.channel_id, passive, durable, auto_delete)
 
+    def exchange_delete(self, exchange="", if_unused=False):
+        return self.connection._exchange_delete(exchange,
+                self.channel_id, if_unused)
+
     def queue_declare(self, queue="", passive=False, durable=False,
             exclusive=False, auto_delete=False, arguments=None,
             nowait=False):
@@ -127,6 +132,10 @@ class Channel(object):
             nowait=False):
         return self.connection._queue_unbind(queue, exchange, binding_key,
                 self.channel_id)
+
+    def queue_delete(self, queue="", if_unused=False, if_empty=False):
+        return self.connection._queue_delete(queue, self.channel_id,
+                                             if_unused, if_empty)
 
     def close(self):
         self.connection._remove_channel(self)
@@ -164,6 +173,10 @@ class Connection(_pyrabbitmq.connection):
                                      channel_max=self.channel_max,
                                      frame_max=self.frame_max,
                                      heartbeat=self.heartbeat)
+        self._do_connect()
+
+    def reconnect(self):
+        self.close()
         self._do_connect()
 
     def drain_events(self, timeout=None):

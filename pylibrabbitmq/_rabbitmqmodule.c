@@ -252,6 +252,7 @@ static PyObject *PyRabbitMQ_Connection_close(PyRabbitMQ_Connection *self) {
     amqp_rpc_reply_t reply;
     if (self->connected) {
         reply = amqp_connection_close(self->conn, AMQP_REPLY_SUCCESS);
+        self->connected = 0;
         if (!PyRabbitMQ_handle_amqp_error(reply, "Couldn't close connection",
                 PyRabbitMQExc_ConnectionError))
             goto error;
@@ -260,7 +261,6 @@ static PyObject *PyRabbitMQ_Connection_close(PyRabbitMQ_Connection *self) {
 
         if (!PyRabbitMQ_handle_error(close(self->sockfd), "Couldn't close socket"))
             goto error;
-        self->connected = 0;
     }
 
     Py_RETURN_NONE;
@@ -736,6 +736,43 @@ error:
     return 0;
 }
 
+/* Connection._queue_delete */
+static PyObject *PyRabbitMQ_Connection_queue_delete(PyRabbitMQ_Connection *self,
+        PyObject *args, PyObject *kwargs) {
+    char *queue = NULL;
+    int channel, if_unused, if_empty;
+    amqp_queue_delete_ok_t *ok;
+    amqp_rpc_reply_t reply;
+
+    static char *kwlist[] = {"queue", "channel", "if_unused", "if_empty", NULL};
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "siii", kwlist,
+                &queue, &if_unused, &if_empty)) {
+        Py_BEGIN_ALLOW_THREADS;
+        ok = amqp_queue_delete(self->conn, channel,
+                amqp_cstring_bytes(queue), (amqp_boolean_t)0, 0);
+                //#(amqp_boolean_t)if_empty);
+        if (ok == NULL) {
+            reply = amqp_get_rpc_reply(self->conn);
+            Py_END_ALLOW_THREADS;
+
+            if (!PyRabbitMQ_handle_amqp_error(reply,
+                        "queue.delete", PyRabbitMQExc_ChannelError))
+                goto error;
+        }
+
+        PyObject *value = PyInt_FromLong((long)ok->message_count);
+        return value;
+    }
+    else {
+        goto error;
+    }
+
+    Py_RETURN_NONE;
+
+error:
+    return 0;
+}
+
 
 /* Connection._queue_declare */
 static PyObject *PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *self,
@@ -862,6 +899,37 @@ error:
     return 0;
 }
 
+/* Connection._exchange_delete */
+static PyObject *PyRabbitMQ_Connection_exchange_delete(PyRabbitMQ_Connection *self,
+        PyObject *args, PyObject *kwargs) {
+    char *exchange = NULL;
+    int channel, if_unused;
+    amqp_rpc_reply_t reply;
+
+    static char *kwlist[] = {"exchange", "channel", "if_unused", NULL};
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "sii", kwlist,
+                &exchange, &channel, &if_unused)) {
+
+        Py_BEGIN_ALLOW_THREADS;
+        amqp_exchange_delete(self->conn, channel,
+                           amqp_cstring_bytes(exchange),
+                           (amqp_boolean_t)if_unused);
+        reply = amqp_get_rpc_reply(self->conn);
+        Py_END_ALLOW_THREADS;
+
+        if (!PyRabbitMQ_handle_amqp_error(reply,
+                    "exchange.delete", PyRabbitMQExc_ChannelError))
+            goto error;
+    }
+    else {
+        goto error;
+    }
+
+    Py_RETURN_NONE;
+
+error:
+    return 0;
+}
 
 /* Connection._basic_publish */
 static PyObject *PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
