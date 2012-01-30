@@ -55,8 +55,8 @@ class Channel(object):
     def flow(self, enabled):
         pass
 
-    def basic_get(self, queue="", noack=False):
-        frame = self.connection._basic_get(queue, noack, self.channel_id)
+    def basic_get(self, queue="", no_ack=False):
+        frame = self.connection._basic_get(queue, no_ack, self.channel_id)
         if frame is not None:
             return(self.Message(frame["body"],
                                 frame["properties"],

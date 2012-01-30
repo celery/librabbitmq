@@ -1222,18 +1222,18 @@ static int PyRabbitMQ_wait_timeout(int sockfd, double timeout) {
 static PyObject *PyRabbitMQ_Connection_basic_get(PyRabbitMQ_Connection *self,
         PyObject *args, PyObject *kwargs) {
     char *queue = NULL;
-    int noack = 0;
+    int no_ack = 0;
     int channel = 0;
     amqp_rpc_reply_t reply;
 
-    static char *kwlist[] = {"queue", "noack", "channel", NULL};
+    static char *kwlist[] = {"queue", "no_ack", "channel", NULL};
     if (PyArg_ParseTupleAndKeywords(args, kwargs, "sii", kwlist,
-                &queue, &noack, &channel)) {
+                &queue, &no_ack, &channel)) {
 
         Py_BEGIN_ALLOW_THREADS;
         reply = amqp_basic_get(self->conn, channel,
                            amqp_cstring_bytes(queue),
-                           noack);
+                           no_ack);
         Py_END_ALLOW_THREADS;
 
         if (!PyRabbitMQ_handle_amqp_error(reply,
