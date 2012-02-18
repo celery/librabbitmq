@@ -1140,7 +1140,8 @@ static PyObject *PyRabbitMQ_Connection_basic_recv(PyRabbitMQ_Connection *self,
 
     static char *kwlist[] = {"timeout", NULL};
     if (PyArg_ParseTupleAndKeywords(args, kwargs, "d", kwlist, &timeout)) {
-        buffered = amqp_data_in_buffer(self->conn);
+        buffered = (amqp_data_in_buffer(self->conn) ||
+                    amqp_frames_enqueued(self->conn));
 
         if (timeout > 0.0 && !buffered) {
             ready = PyRabbitMQ_wait_timeout(self->sockfd, timeout);
