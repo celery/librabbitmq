@@ -1,7 +1,7 @@
 import socket
 import unittest2 as unittest
 
-from librabbitmq import Message, Connection, ConnectionError
+from librabbitmq import Message, Connection, ConnectionError, ChannelError
 TEST_QUEUE = "pyrabbit.testq"
 
 
@@ -99,6 +99,67 @@ class test_Channel(unittest.TestCase):
         self.assertRaises(socket.timeout,
                 self.connection.drain_events, timeout=0.1)
         self.assertEquals(len(messages), 1)
+
+    def tearDown(self):
+        if self.channel:
+            self.channel.queue_purge(TEST_QUEUE)
+            self.channel.close()
+        if self.connection:
+            try:
+                self.connection.close()
+            except ConnectionError:
+                pass
+
+class test_Delete(unittest.TestCase):
+
+    def setUp(self):
+        self.connection = Connection(host="localhost:5672", userid="guest",
+                                     password="guest", virtual_host="/")
+        self.channel = self.connection.channel()
+        self.TEST_QUEUE = "pyrabbitmq.testq2"
+
+    def test_delete(self):
+        """Test that we can declare a channel delete it, and then declare with
+        different properties"""
+
+        res = self.channel.exchange_declare(self.TEST_QUEUE, "direct")
+        res =self.channel.queue_declare(self.TEST_QUEUE)
+        res = self.channel.queue_bind(self.TEST_QUEUE, self.TEST_QUEUE,
+                                self.TEST_QUEUE)
+
+        # Delete the queue
+        self.channel.queue_delete(self.TEST_QUEUE)
+
+        # Declare it again
+        x = self.channel.queue_declare(self.TEST_QUEUE, durable=True)
+        self.assertIn("message_count", x)
+        self.assertIn("consumer_count", x)
+        self.assertEqual(x["queue"], self.TEST_QUEUE)
+
+        self.channel.queue_delete(self.TEST_QUEUE)
+
+    def test_delete_empty(self):
+        """Test that the queue doesn't get deleted if it is not empty"""
+        self.channel.exchange_declare(self.TEST_QUEUE, "direct")
+        self.channel.queue_declare(self.TEST_QUEUE)
+        self.channel.queue_bind(self.TEST_QUEUE, self.TEST_QUEUE,
+                                self.TEST_QUEUE)
+
+        message = Message("the quick brown fox jumps over the lazy dog",
+                          properties=dict(content_type="application/json",
+                                          content_encoding="utf-8"))
+
+        self.channel.basic_publish(message, self.TEST_QUEUE, self.TEST_QUEUE)
+
+        self.assertRaises(ChannelError, self.channel.queue_delete,
+                          self.TEST_QUEUE, if_empty=True)
+        #We need to make a new channel after a ChannelError
+        self.channel = self.connection.channel()
+
+        x = self.channel.basic_get(self.TEST_QUEUE)
+        self.assertTrue(x.body)
+
+        self.channel.queue_delete(self.TEST_QUEUE, if_empty=True)
 
     def tearDown(self):
         if self.channel:

@@ -751,12 +751,15 @@ static PyObject *PyRabbitMQ_Connection_queue_delete(PyRabbitMQ_Connection *self,
 
     static char *kwlist[] = {"queue", "channel", "if_unused", "if_empty", NULL};
     if (PyArg_ParseTupleAndKeywords(args, kwargs, "siii", kwlist,
-                &queue, &if_unused, &if_empty)) {
+                &queue, &channel, &if_unused, &if_empty)) {
         Py_BEGIN_ALLOW_THREADS;
         ok = amqp_queue_delete(self->conn, channel,
-                amqp_cstring_bytes(queue), (amqp_boolean_t)0, 0);
-                //#(amqp_boolean_t)if_empty);
+                amqp_cstring_bytes(queue), (amqp_boolean_t) if_unused,
+                (amqp_boolean_t) if_empty);
+        Py_END_ALLOW_THREADS;
+        
         if (ok == NULL) {
+            Py_BEGIN_ALLOW_THREADS;
             reply = amqp_get_rpc_reply(self->conn);
             Py_END_ALLOW_THREADS;
 
