@@ -59,6 +59,7 @@ static PyRabbitMQ_Connection* PyRabbitMQ_ConnectionType_new(PyTypeObject *,
 static void PyRabbitMQ_ConnectionType_dealloc(PyRabbitMQ_Connection *);
 static int PyRabbitMQ_Connection_init(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
+static PyObject *PyRabbitMQ_Connection_fileno(PyRabbitMQ_Connection *);
 static PyObject *PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *);
 static PyObject *PyRabbitMQ_Connection_close(PyRabbitMQ_Connection *);
 static PyObject *PyRabbitMQ_Connection_channel_open(PyRabbitMQ_Connection *, PyObject *);
@@ -93,8 +94,10 @@ static PyObject *PyRabbitMQ_Connection_basic_consume(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
 static long long PyRabbitMQ_now_usec(void);
 static int PyRabbitMQ_wait_timeout(int, double);
+static int PyRabbitMQ_wait_nb(int);
 
 static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
+    {"fileno", (PyCFunction)PyRabbitMQ_Connection_fileno, METH_NOARGS},
     {"_do_connect", (PyCFunction)PyRabbitMQ_Connection_connect, METH_NOARGS,
         "Establish connection to the server."},
     {"_close", (PyCFunction)PyRabbitMQ_Connection_close, METH_NOARGS,

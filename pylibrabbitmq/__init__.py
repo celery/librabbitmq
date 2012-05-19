@@ -182,8 +182,14 @@ class Connection(_pyrabbitmq.connection):
     def drain_events(self, timeout=None):
         # we rewrite to socket.timeout here, as this is what kombu-patched
         # amqplib uses.
+        if timeout == 0.0:
+            timeout = -1
+        elif timeout is None:
+            timeout = 0.0
+        else:
+            timeout = float(timeout)
         try:
-            event = self._basic_recv(timeout=timeout and float(timeout) or 0.0)
+            event = self._basic_recv(timeout=timeout)
         except _pyrabbitmq.TimeoutError:
             raise socket.timeout(timeout)
         if event:

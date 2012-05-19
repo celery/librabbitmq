@@ -220,6 +220,11 @@ static int PyRabbitMQ_Connection_init(PyRabbitMQ_Connection *self,
 }
 
 
+static PyObject *PyRabbitMQ_Connection_fileno(PyRabbitMQ_Connection *self) {
+    return PyInt_FromLong((long)self->sockfd);
+}
+
+
 /* Connection.connect */
 static PyObject *PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self) {
     amqp_rpc_reply_t reply;
@@ -1143,8 +1148,13 @@ static PyObject *PyRabbitMQ_Connection_basic_recv(PyRabbitMQ_Connection *self,
         buffered = (amqp_data_in_buffer(self->conn) ||
                     amqp_frames_enqueued(self->conn));
 
-        if (timeout > 0.0 && !buffered) {
-            ready = PyRabbitMQ_wait_timeout(self->sockfd, timeout);
+        if ((timeout > 0.0 || timeout == -1) && !buffered) {
+            if (timeout > 0.0) {
+                ready = PyRabbitMQ_wait_timeout(self->sockfd, timeout);
+            }
+            else {
+                ready = PyRabbitMQ_wait_nb(self->sockfd);
+            }
             if (ready == 0) {
                 if (PyErr_Occurred() == NULL) {
                     PyErr_SetString(PyRabbitMQExc_TimeoutError, "timed out");
@@ -1186,6 +1196,25 @@ static long long PyRabbitMQ_now_usec(void) {
    return (long long)tv.tv_sec * 1000000 + (long long)tv.tv_usec;
  }
 
+static int PyRabbitMQ_wait_nb(int sockfd) {
+    int result = 0;
+    fd_set fdset;
+    FD_ZERO(&fdset);
+    FD_SET(sockfd, &fdset);
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+
+    Py_BEGIN_ALLOW_THREADS;
+    result = select(sockfd + 1, &fdset, NULL, NULL, &tv);
+    Py_END_ALLOW_THREADS;
+    if (result <= 0)
+        return result;
+    if (FD_ISSET(sockfd, &fdset)) {
+        return 1;
+    }
+    return 0;
+}
 
 static int PyRabbitMQ_wait_timeout(int sockfd, double timeout) {
     long long t1, t2;
