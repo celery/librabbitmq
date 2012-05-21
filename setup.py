@@ -95,7 +95,7 @@ def senv(*k__v):
     for k, v in k__v:
         prev = restore[k] = os.environ.get(k)
         os.environ[k] = (prev + " " if prev else "") + str(v)
-    return restore
+    return dict((k, v) for k, v in restore.iteritems() if v is not None)
 
 
 class build(_build):
