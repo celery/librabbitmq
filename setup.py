@@ -2,7 +2,6 @@ import os
 import sys
 from setuptools import setup, Extension, find_packages
 from distutils.command.build import build as _build
-from distutils.command.install import install as _install
 
 # --with-librabbitmq=<dir>: path to librabbitmq package if needed
 
@@ -83,19 +82,14 @@ class build(_build):
             os.chdir(H("rabbitmq-c"))
             if not os.path.isfile("config.h"):
                 print("- configure rabbitmq-c...")
-                os.system(H("rabbitmq-c", "configure"))
+                os.system("/bin/sh %s" % H("rabbitmq-c", "configure"))
             print("- make rabbitmq-c...")
-            os.system(find_make())
+            os.chdir(H("rabbitmq-c", "librabbitmq"))
+            os.system('"%s" all' % find_make())
         finally:
             os.chdir(here)
         _build.run(self)
 
-
-class install(_install):
-
-    def run(self):
-        build(self.distribution).run()
-        _install.run(self)
 
 setup(
     name="librabbitmq",
@@ -109,7 +103,7 @@ setup(
     test_suite="nose.collector",
     zip_safe=False,
     packages=find_packages(exclude=['ez_setup', 'tests', 'tests.*']),
-    cmdclass={"build": build, "install": install},
+    cmdclass={"build": build},
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Operating System :: OS Independent",
