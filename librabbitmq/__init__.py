@@ -1,16 +1,16 @@
 import itertools
 import socket
 
-import _pyrabbitmq
+import _librabbitmq
 
-__version__ = _pyrabbitmq.__version__
-__author__ = _pyrabbitmq.__author__
-__contact__ = _pyrabbitmq.__contact__
-__homepage__ = _pyrabbitmq.__homepage__
+__version__ = _librabbitmq.__version__
+__author__ = _librabbitmq.__author__
+__contact__ = _librabbitmq.__contact__
+__homepage__ = _librabbitmq.__homepage__
 __docformat__ = "restructuredtext"
 
-ConnectionError = _pyrabbitmq.ConnectionError
-ChannelError = _pyrabbitmq.ChannelError
+ConnectionError = _librabbitmq.ConnectionError
+ChannelError = _librabbitmq.ChannelError
 
 
 __version__ = "0.5.0"
@@ -141,7 +141,7 @@ class Channel(object):
         self.connection._remove_channel(self)
 
 
-class Connection(_pyrabbitmq.connection):
+class Connection(_librabbitmq.connection):
     """Create a connection to the specified host, which should be
     a ``'host[:port]'`` string, such as ``'localhost'``, or ``'1.2.3.4:5672'``
 
@@ -190,7 +190,7 @@ class Connection(_pyrabbitmq.connection):
             timeout = float(timeout)
         try:
             event = self._basic_recv(timeout=timeout)
-        except _pyrabbitmq.TimeoutError:
+        except _librabbitmq.TimeoutError:
             raise socket.timeout(timeout)
         if event:
             self.channels[event["channel"]]._event(event)
@@ -226,6 +226,6 @@ class Connection(_pyrabbitmq.connection):
     def close(self):
         try:
             self._close()
-        except _pyrabbitmq.ConnectionError:
+        except ConnectionError:
             pass
 

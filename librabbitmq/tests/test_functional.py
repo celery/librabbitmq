@@ -1,7 +1,7 @@
 import socket
 import unittest2 as unittest
 
-from pylibrabbitmq import Message, Connection, ConnectionError
+from librabbitmq import Message, Connection, ConnectionError
 TEST_QUEUE = "pyrabbit.testq"
 
 

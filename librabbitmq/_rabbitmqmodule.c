@@ -6,7 +6,7 @@
 
 #include "_rabbitmqmodule.h"
 #include "_amqstate.h"
-#include "pylibrabbitmq_distmeta.h"
+#include "librabbitmq_distmeta.h"
 
 #ifndef _PYRMQ_INLINE
 # if __GNUC__ && !__GNUC_STDC_INLINE__
@@ -1323,21 +1323,21 @@ error:
     return 0;
 }
 
-/* Module: _pyrabbitmq */
+/* Module: _librabbitmq */
 
 static PyMethodDef PyRabbitMQ_functions[] = {
     {NULL, NULL, 0, NULL}
 };
 
 
-PyMODINIT_FUNC init_pyrabbitmq(void) {
+PyMODINIT_FUNC init_librabbitmq(void) {
     PyObject *module;
 
     if (PyType_Ready(&PyRabbitMQ_ConnectionType) < 0) {
         return;
     }
 
-    module = Py_InitModule3("_pyrabbitmq", PyRabbitMQ_functions,
+    module = Py_InitModule3("_librabbitmq", PyRabbitMQ_functions,
             "Hand-made wrapper for librabbitmq.");
     if (module == NULL) {
         return;
@@ -1354,13 +1354,13 @@ PyMODINIT_FUNC init_pyrabbitmq(void) {
     PyModule_AddIntConstant(module, "AMQP_SASL_METHOD_PLAIN", AMQP_SASL_METHOD_PLAIN);
 
     PyRabbitMQExc_ConnectionError = PyErr_NewException(
-            "_pyrabbitmq.ConnectionError", NULL, NULL);
+            "_librabbitmq.ConnectionError", NULL, NULL);
     PyModule_AddObject(module, "ConnectionError",
                        (PyObject *)PyRabbitMQExc_ConnectionError);
     PyRabbitMQExc_ChannelError = PyErr_NewException(
-            "_pyrabbitmq.ChannelError", NULL, NULL);
+            "_librabbitmq.ChannelError", NULL, NULL);
     PyRabbitMQExc_TimeoutError = PyErr_NewException(
-            "_pyrabbitmq.TimeoutError", NULL, NULL);
+            "_librabbitmq.TimeoutError", NULL, NULL);
     PyModule_AddObject(module, "TimeoutError",
                        (PyObject *)PyRabbitMQExc_TimeoutError);
     PyModule_AddObject(module, "ChannelError",
