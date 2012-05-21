@@ -1,6 +1,7 @@
 import os
 import sys
 from setuptools import setup, Extension, find_packages
+from distutils.command.build import build as _build
 
 # --with-librabbitmq=<dir>: path to librabbitmq package if needed
 
@@ -30,9 +31,11 @@ for arg in sys.argv[1:]:
     unprocessed.append(arg)
 sys.argv[1:] = unprocessed
 
-for pkgdir in pkgdirs:
-    incdirs.append(os.path.join(pkgdir, "include"))
-    libdirs.append(os.path.join(pkgdir, "lib"))
+#for pkgdir in pkgdirs:
+#    incdirs.append(os.path.join(pkgdir, "include"))
+#    libdirs.append(os.path.join(pkgdir, "lib"))
+incdirs.append(os.path.join(os.path.abspath(os.getcwd()), "rabbitmq-c", "librabbitmq"))
+libdirs.append(os.path.join(os.path.abspath(os.getcwd()), "rabbitmq-c", "librabbitmq"))
 
 pyrabbitmq_ext = Extension("_pyrabbitmq", ["pylibrabbitmq/_rabbitmqmodule.c"],
                         libraries=libs, include_dirs=incdirs,
@@ -58,6 +61,27 @@ author = distmeta[1].strip()
 contact = distmeta[2].strip()
 homepage = distmeta[3].strip()
 
+
+def find_make(alt=("gmake", "gnumake", "make", "nmake")):
+    for path in os.environ["PATH"].split(":"):
+        for make in (os.path.join(path, m) for m in alt):
+            if os.path.isfile(make):
+                return make
+
+
+class build(_build):
+
+    def run(self):
+        here = os.path.abspath(os.getcwd())
+        try:
+            os.chdir(os.path.join(here, "rabbitmq-c"))
+            if not os.path.isfile("config.h"):
+                os.system(os.path.join(here, "rabbitmq-c", "configure"))
+            os.system(find_make())
+        finally:
+            os.chdir(here)
+        _build.run(self)
+
 setup(
     name="pylibrabbitmq",
     version=version,
@@ -70,6 +94,7 @@ setup(
     test_suite="nose.collector",
     zip_safe=False,
     packages=find_packages(exclude=['ez_setup', 'tests', 'tests.*']),
+    cmdclass={"build": build},
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Operating System :: OS Independent",

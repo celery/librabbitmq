@@ -8,7 +8,10 @@ include TODO
 include setup.cfg
 recursive-include pylibrabbitmq *
 recursive-include tests *
+recursive-include rabbitmq-c *
+recursive-include rabbitmq-codegen
 prune *.pyc
 prune *.o
+prune *.la
 prune *.so
 prune *.dylib
