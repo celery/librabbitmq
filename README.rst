@@ -49,16 +49,17 @@ Stand-alone::
     >>> channel.queue_declare(queue, ...)
     >>> channel.queue_bind(queue, exchange, routing_key)
 
-Produce
--------
+Producing
+---------
 
 ::
+
     >>> m = Message(body, content_type=None, content_encoding=None,
     ...             delivery_mode=1)
     >>> channel.basic_publish(m, exchange, routing_key, ...)
 
-Consume
--------
+Consuming
+---------
 
 ::
 
