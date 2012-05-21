@@ -27,6 +27,36 @@ or, install via easy_install::
 
     $ easy_install librabbitmq
 
+Downloading and installing from source
+--------------------------------------
+
+Download the latest version from
+    http://pypi.python.org/pypi/librabbitmq/
+
+Then install it by doing the following,::
+
+    $ tar xvfz librabbitmq-0.0.0.tar.gz
+    $ cd librabbitmq-0.0.0
+    $ python setup.py build
+    # python setup.py install # as root
+
+Using the development version
+-----------------------------
+
+You can clone the repository by doing the following::
+
+    $ git clone git://github.com/celery/librabbitmq.git
+
+Then install it by doing the following::
+
+    $ cd librabbitmq
+    $ git submodule init
+    $ git submodule update
+    $ python setup.py build
+    $ python setup.py develop
+
+Submodules must be initialized, because this is how the amqp-codegen
+is retrieved.
 
 Examples
 ========
