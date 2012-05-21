@@ -1,0 +1,3 @@
+[submodule "rabbitmq-codegen"]
+	path = rabbitmq-codegen
+	url = https://github.com/rabbitmq/rabbitmq-codegen/

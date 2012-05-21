@@ -1,6 +1,8 @@
 import os
 import sys
 from setuptools import setup, Extension, find_packages
+from distutils.command.build import build as _build
+from distutils.command.install import install as _install
 
 # --with-librabbitmq=<dir>: path to librabbitmq package if needed
 
@@ -30,46 +32,84 @@ for arg in sys.argv[1:]:
     unprocessed.append(arg)
 sys.argv[1:] = unprocessed
 
-for pkgdir in pkgdirs:
-    incdirs.append(os.path.join(pkgdir, "include"))
-    libdirs.append(os.path.join(pkgdir, "lib"))
+#for pkgdir in pkgdirs:
+#    incdirs.append(os.path.join(pkgdir, "include"))
+#    libdirs.append(os.path.join(pkgdir, "lib"))
+incdirs.append(os.path.join(os.path.abspath(
+    os.getcwd()), "rabbitmq-c", "librabbitmq",
+))
+libdirs.append(os.path.join(os.path.abspath(
+    os.getcwd()), "rabbitmq-c", "librabbitmq", ".libs",
+))
 
-pyrabbitmq_ext = Extension("_pyrabbitmq", ["pylibrabbitmq/_rabbitmqmodule.c"],
+librabbitmq_ext = Extension("_librabbitmq", ["librabbitmq/_rabbitmqmodule.c"],
                         libraries=libs, include_dirs=incdirs,
                         library_dirs=libdirs, define_macros=defs)
 
 # Hidden secret: if environment variable GEN_SETUP is set, generate Setup file.
 if cmd == "gen-setup":
     line = " ".join((
-        pyrabbitmq_ext.name,
-        " ".join("-l" + lib for lib in pyrabbitmq_ext.libraries),
-        " ".join("-I" + incdir for incdir in pyrabbitmq_ext.include_dirs),
-        " ".join("-L" + libdir for libdir in pyrabbitmq_ext.library_dirs),
+        librabbitmq_ext.name,
+        " ".join("-l" + lib for lib in librabbitmq_ext.libraries),
+        " ".join("-I" + incdir for incdir in librabbitmq_ext.include_dirs),
+        " ".join("-L" + libdir for libdir in librabbitmq_ext.library_dirs),
         " ".join("-D" + name + ("=" + str(value), "")[value is None] for
-                (name, value) in pyrabbitmq_ext.define_macros)))
+                (name, value) in librabbitmq_ext.define_macros)))
     open("Setup", "w").write(line + "\n")
     sys.exit(0)
 
 long_description = open("README.rst", "U").read()
-distmeta = open("pylibrabbitmq/pylibrabbitmq_distmeta.h").read().strip().splitlines()
+distmeta = open("librabbitmq/librabbitmq_distmeta.h").read().strip().splitlines()
 distmeta = [item.split('\"')[1] for item in distmeta]
 version = distmeta[0].strip()
 author = distmeta[1].strip()
 contact = distmeta[2].strip()
 homepage = distmeta[3].strip()
 
+
+def find_make(alt=("gmake", "gnumake", "make", "nmake")):
+    for path in os.environ["PATH"].split(":"):
+        for make in (os.path.join(path, m) for m in alt):
+            if os.path.isfile(make):
+                return make
+
+
+class build(_build):
+
+    def run(self):
+        here = os.path.abspath(os.getcwd())
+        H = lambda *x: os.path.join(here, *x)
+        try:
+            os.chdir(H("rabbitmq-c"))
+            if not os.path.isfile("config.h"):
+                print("- configure rabbitmq-c...")
+                os.system(H("rabbitmq-c", "configure"))
+            print("- make rabbitmq-c...")
+            os.system(find_make())
+        finally:
+            os.chdir(here)
+        _build.run(self)
+
+
+class install(_install):
+
+    def run(self):
+        build(self.distribution).run()
+        _install.run(self)
+
 setup(
-    name="pylibrabbitmq",
+    name="librabbitmq",
     version=version,
     url=homepage,
     author=author,
     author_email=contact,
     license="MPL",
-    description="Python bindings to librabbitmq-c",
+    description="AMQP Client using the rabbitmq-c library.",
     long_description=long_description,
     test_suite="nose.collector",
     zip_safe=False,
     packages=find_packages(exclude=['ez_setup', 'tests', 'tests.*']),
+    cmdclass={"build": build, "install": install},
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Operating System :: OS Independent",
@@ -80,5 +120,5 @@ setup(
         "Topic :: System :: Networking",
         "Topic :: Software Development :: Libraries",
     ],
-    ext_modules=[pyrabbitmq_ext], py_modules=["pylibrabbitmq"],
+    ext_modules=[librabbitmq_ext], py_modules=["librabbitmq"],
 )

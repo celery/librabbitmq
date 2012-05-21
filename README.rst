@@ -1,48 +1,45 @@
-==================================================
- pylibrabbitmq - Python bindings to librabbitmq-c
-==================================================
+================================================================
+ librabbitmq - Python AMQP Client using the rabbitmq-c library.
+================================================================
 
-:Version: 0.4.1
-:Download: http://pypi.python.org/pypi/pylibrabbitmq/
-:Code: http://github.com/ask/pylibrabbitmq/
-:Keywords: rabbitmq, amqp, messaging, librabbitmq, rabbitmq-c, python
+:Version: 0.5.0
+:Download: http://pypi.python.org/pypi/librabbitmq/
+:Code: http://github.com/celery/librabbitmq/
+:Keywords: rabbitmq, amqp, messaging, librabbitmq, rabbitmq-c, python,
+           kombu, celery
 
 .. contents::
     :local:
 
-Experimental Python bindings to the RabbitMQ C-library `librabbitmq`_.
+Python bindings to the RabbitMQ C-library `rabbitmq-c`_.
+Supported by Kombu and Celery.
 
-
-You should probably use `amqplib`_ instead, but when needed you can 
-come back to this if the extra performance is needed.
-
-.. _`librabbitmq`: http://hg.rabbitmq.com/rabbitmq-c/
-.. _`amqplib`: http://barryp.org/software/py-amqplib/
+.. _`rabbitmq-c`: https://github.com/alanxz/rabbitmq-c
 
 Installation
 ============
 
-To install you need to compile `librabbitmq`::
+Install via pip::
 
-    $ mkdir -p /opt/Build/rabbit
-    $ cd /opt/Build/rabbit
-    $ hg clone http://hg.rabbitmq.com/rabbitmq-codegen/
-    $ hg clone http://hg.rabbitmq.com/rabbitmq-c/
-    $ cd rabbitmq-c
-    $ autoreconf -i
-    $ ./configure
-    $ make
-    $ make install
+    $ pip install librabbitmq
 
-Then you can install this package::
+or, install via easy_install::
 
-    $ cd pylibrabbitmq-x.x.x
-    $ python setup.py install
+    $ easy_install librabbitmq
+
 
 Examples
 ========
 
-    >>> from pylibrabbitmq import Connection, Message
+Using with Kombu::
+
+    >>> from kombu import Connection
+    >>> x = Connection("librabbitmq://")
+
+
+Stand-alone::
+
+    >>> from librabbitmq import Connection, Message
 
     >>> conn = Connection(host="localhost", userid="guest",
     ...                   password="guest", virtual_host="/")
@@ -55,12 +52,15 @@ Examples
 Produce
 -------
 
+::
     >>> m = Message(body, content_type=None, content_encoding=None,
     ...             delivery_mode=1)
     >>> channel.basic_publish(m, exchange, routing_key, ...)
 
 Consume
 -------
+
+::
 
     >>> def dump_message(message):
     ...     print("Body:'%s', Proeprties:'%s', DeliveryInfo:'%s'" % (
@@ -75,6 +75,8 @@ Consume
 Poll
 ----
 
+::
+
     >>> message = channel.basic_get(queue, ...)
     >>> if message:
     ...     dump_message(message)
@@ -84,6 +86,8 @@ Poll
 
 Other
 -----
+
+::
 
     >>> channel.queue_unbind(queue, ...)
     >>> channel.close()

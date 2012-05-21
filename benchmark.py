@@ -19,7 +19,7 @@ Q = "amqplib.benchmark"
 """ % INIT_COMMON
 
 INIT_LIBRABBIT = """
-import pylibrabbitmq as amqp
+import librabbitmq as amqp
 
 Q = "librabbit.benchmark"
 %s
