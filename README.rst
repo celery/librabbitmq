@@ -2,7 +2,7 @@
  librabbitmq - Python AMQP Client using the rabbitmq-c library.
 ================================================================
 
-:Version: 0.9.0
+:Version: 0.9.1
 :Download: http://pypi.python.org/pypi/librabbitmq/
 :Code: http://github.com/celery/librabbitmq/
 :Keywords: rabbitmq, amqp, messaging, librabbitmq, rabbitmq-c, python,
@@ -50,13 +50,7 @@ You can clone the repository by doing the following::
 Then install it by doing the following::
 
     $ cd librabbitmq
-    $ git submodule init
-    $ git submodule update
-    $ python setup.py build
-    $ python setup.py develop
-
-Submodules must be initialized, because this is how the amqp-codegen
-is retrieved.
+    $ make install        # or make develop
 
 Examples
 ========

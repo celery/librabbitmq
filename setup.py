@@ -1,5 +1,6 @@
 import os
 import sys
+from glob import glob
 from setuptools import setup, Extension, find_packages
 from distutils.command.build import build as _build
 
@@ -7,7 +8,7 @@ from distutils.command.build import build as _build
 
 cmd = None
 pkgdirs = []  # incdirs and libdirs get these
-libs = ["rabbitmq"]
+libs = []#"rabbitmq"]
 defs = []
 incdirs = []
 libdirs = []
@@ -73,21 +74,56 @@ def find_make(alt=("gmake", "gnumake", "make", "nmake")):
                 return make
 
 
+def striparch(s):
+    s = s.split()
+    while 1:
+        try:
+            i = s.index("-arch")
+        except ValueError:
+            pass
+        del(s[i:i + 2])
+    return " ".join(s)
+
+def arch(cflags):
+    if sys.platform == 'darwin':
+        kernel_version = os.uname()[2] # 8.4.3
+        major_version = int(kernel_version.split('.')[0])
+
+
+def senv(*k__v):
+    restore = {}
+    for k, v in k__v:
+        prev = restore[k] = os.environ.get(k)
+        os.environ[k] = (prev + " " if prev else "") + str(v)
+    return restore
+
+
 class build(_build):
 
     def run(self):
         here = os.path.abspath(os.getcwd())
         H = lambda *x: os.path.join(here, *x)
+        from distutils import sysconfig
+        config = sysconfig.get_config_vars()
         try:
-            os.chdir(H("rabbitmq-c"))
-            if not os.path.isfile("config.h"):
-                print("- configure rabbitmq-c...")
-                os.system("/bin/sh %s" % H("rabbitmq-c", "configure"))
-            print("- make rabbitmq-c...")
-            os.chdir(H("rabbitmq-c", "librabbitmq"))
-            os.system('"%s" all' % find_make())
+            restore = senv(("CFLAGS", config["CFLAGS"]),
+                 ("LDFLAGS", config["LDFLAGS"]))
+            try:
+                os.chdir(H("rabbitmq-c"))
+                if not os.path.isfile("config.h"):
+                    print("- configure rabbitmq-c...")
+                    os.system("/bin/sh %s --disable-dependency-tracking" % (
+                        H("rabbitmq-c", "configure"), ))
+                print("- make rabbitmq-c...")
+                os.chdir(H("rabbitmq-c", "librabbitmq"))
+                senv(("CFLAGS", "-static"))
+                os.system('"%s" all' % find_make())
+            finally:
+                os.environ.update(restore)
         finally:
             os.chdir(here)
+        #os.environ["LDFLAGS"] = " ".join(["%s" % f
+        #    for f in glob(H("rabbitmq-c", "librabbitmq", "*.o"))])
         _build.run(self)
 
 
@@ -114,5 +150,5 @@ setup(
         "Topic :: System :: Networking",
         "Topic :: Software Development :: Libraries",
     ],
-    ext_modules=[librabbitmq_ext], py_modules=["librabbitmq"],
+    ext_modules=[librabbitmq_ext],
 )
