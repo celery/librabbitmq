@@ -116,14 +116,13 @@ class build(_build):
                         H("rabbitmq-c", "configure"), ))
                 print("- make rabbitmq-c...")
                 os.chdir(H("rabbitmq-c", "librabbitmq"))
-                senv(("CFLAGS", "-static"))
                 os.system('"%s" all' % find_make())
             finally:
                 os.environ.update(restore)
         finally:
             os.chdir(here)
-        #os.environ["LDFLAGS"] = " ".join(["%s" % f
-        #    for f in glob(H("rabbitmq-c", "librabbitmq", "*.o"))])
+        os.environ["LDFLAGS"] = " ".join(["%s" % f
+            for f in glob(H("rabbitmq-c", "librabbitmq", "*.o"))])
         _build.run(self)
 
 
