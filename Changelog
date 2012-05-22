@@ -5,6 +5,14 @@
 .. contents::
     :local:
 
+0.9.3
+=====
+:release-date: 2012-05-22 06:40 P.M BST
+
+* Patches memory leak.
+
+* Use ``_PyString_Join`` to concat body parts.
+
 0.9.2
 =====
 :release-date: 2012-05-21 09:00 P.M BST

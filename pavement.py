@@ -59,7 +59,7 @@ def upload_docs(options):
 
 @task
 def autodoc(options):
-    sh("contrib/release/doc4allmods pylibrabbitmq")
+    sh("contrib/release/doc4allmods librabbitmq")
 
 
 @task
@@ -84,7 +84,7 @@ def readme(options):
 @task
 def bump(options):
     sh("""contrib/release/bump_version.py \
-            pylibrabbitmq/pylibrabbitmq_distmeta.h README.rst""")
+            librabbitmq/librabbitmq_distmeta.h README.rst""")
 
 
 @task
@@ -110,7 +110,7 @@ def test(options):
 ])
 def flake8(options):
     noerror = getattr(options, "noerror", False)
-    sh("""flake8 pylibrabbitmq""", ignore_error=noerror)
+    sh("""flake8 librabbitmq""", ignore_error=noerror)
 
 
 @task
@@ -119,7 +119,7 @@ def flake8(options):
 ])
 def flakeplus(options):
     noerror = getattr(options, "noerror", False)
-    sh("python contrib/release/flakeplus.py pylibrabbitmq",
+    sh("python contrib/release/flakeplus.py librabbitmq",
        ignore_error=noerror)
 
 
@@ -138,7 +138,7 @@ def flakes(options):
 ])
 def pep8(options):
     noerror = getattr(options, "noerror", False)
-    return sh("""find pylibrabbitmq -name "*.py" | xargs pep8 | perl -nle'\
+    return sh("""find librabbitmq -name "*.py" | xargs pep8 | perl -nle'\
             print; $a=1 if $_}{exit($a)'""", ignore_error=noerror)
 
 
