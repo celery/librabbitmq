@@ -387,7 +387,7 @@ void basic_properties_to_PyDict(amqp_basic_properties_t *props,
 
     PyDICT_SETSTR_DECREF(p, "headers", h, PyDict_New());
 
-    if (0) { //props->_flags & AMQP_BASIC_HEADERS_FLAG) {
+    if (props->_flags & AMQP_BASIC_HEADERS_FLAG) {
         int i;
 
         for (i = 0; i < props->headers.num_entries; ++i) {
@@ -632,10 +632,7 @@ int PyRabbitMQ_recv(PyObject *p, amqp_connection_state_t conn, int piggyback) {
         // p["body"]
         body_target = frame.payload.properties.body_size;
         body_received = 0;
-        char *buffer = 0;
-        //PyObject *parts = PyList_New(0);
-        amqp_bytes_t *body_parts[100];
-        int i = 0;
+        PyObject *parts = PyList_New(0);
         while (body_received < body_target) {
             PyObject *part;
             Py_BEGIN_ALLOW_THREADS;
@@ -651,32 +648,17 @@ int PyRabbitMQ_recv(PyObject *p, amqp_connection_state_t conn, int piggyback) {
 
             body_received += frame.payload.body_fragment.len;
             part = PySTRING_FROM_AMQBYTES(frame.payload.body_fragment);
-            body_parts[i] = &frame.payload.body_fragment;
-            //if (PyList_Append(parts, part) == -1)
-            //        return -1;
+            if (PyList_Append(parts, part) == -1)
+                return -1;
             Py_DECREF(part);
-            i++;
         }
 
-        if (i > 1) {
-            int j, k = 0;
-            size_t ps = 0;
-            for (j = 0; j < i; j++) {
-                ps += body_parts[j]->len;
-            }
-            char *all = malloc((ps + i));
-            for (k = 0; k < i; k++) {
-                strncpy(all, (char *)body_parts[k]->bytes, body_parts[k]->len + 1);
-            }
-            payload = PyString_FromStringAndSize(all, ps);
-            free(all);
-        }
-        else {
-            payload = PyString_FromStringAndSize(body_parts[0]->bytes, body_parts[0]->len);
-        }
-
+        PyObject *sep = PyString_FromString("");
+        payload = _PyString_Join(sep, parts);
         PyDict_SetItemString(p, "body", payload);
         Py_DECREF(payload);
+        Py_DECREF(sep);
+        Py_DECREF(parts);
         break;
     }
     amqp_maybe_release_buffers(conn);
