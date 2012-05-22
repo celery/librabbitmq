@@ -21,7 +21,10 @@ rabbitmq-clean:
 rabbitmq-distclean:
 	-(cd $(RABBIT_DIR); make distclean)
 
-build: rabbitmq-c
+clean-build:
+	-rm -rf build
+
+build: clean-build rabbitmq-c
 	python setup.py build
 
 install: build

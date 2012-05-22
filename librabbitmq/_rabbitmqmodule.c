@@ -335,7 +335,6 @@ void basic_properties_to_PyDict(amqp_basic_properties_t *props,
     PyObject *key = NULL;
     PyObject *value = NULL;
     PyObject *h = NULL;
-    h = PyDict_New();
 
     if (props->_flags & AMQP_BASIC_CONTENT_TYPE_FLAG) {
         PyDICT_SETSTR_DECREF(p, "content_type", value,
@@ -388,7 +387,7 @@ void basic_properties_to_PyDict(amqp_basic_properties_t *props,
 
     PyDICT_SETSTR_DECREF(p, "headers", h, PyDict_New());
 
-    if (props->_flags & AMQP_BASIC_HEADERS_FLAG) {
+    if (0) { //props->_flags & AMQP_BASIC_HEADERS_FLAG) {
         int i;
 
         for (i = 0; i < props->headers.num_entries; ++i) {
@@ -624,8 +623,6 @@ int PyRabbitMQ_recv(PyObject *p, amqp_connection_state_t conn, int piggyback) {
         PyDICT_SETSTR_DECREF(p, "channel", value,
                 PyInt_FromLong((long)frame.channel));
 
-        propdict = PyDict_New();
-
         // p["properties"] = {}
         props = (amqp_basic_properties_t *)frame.payload.properties.decoded;
         PyDICT_SETSTR_DECREF(p, "properties", propdict,
@@ -635,7 +632,10 @@ int PyRabbitMQ_recv(PyObject *p, amqp_connection_state_t conn, int piggyback) {
         // p["body"]
         body_target = frame.payload.properties.body_size;
         body_received = 0;
-        payload = PyString_FromStringAndSize("", 0);
+        char *buffer = 0;
+        //PyObject *parts = PyList_New(0);
+        amqp_bytes_t *body_parts[100];
+        int i = 0;
         while (body_received < body_target) {
             PyObject *part;
             Py_BEGIN_ALLOW_THREADS;
@@ -651,9 +651,28 @@ int PyRabbitMQ_recv(PyObject *p, amqp_connection_state_t conn, int piggyback) {
 
             body_received += frame.payload.body_fragment.len;
             part = PySTRING_FROM_AMQBYTES(frame.payload.body_fragment);
-            PyString_Concat(&payload, part);
+            body_parts[i] = &frame.payload.body_fragment;
+            //if (PyList_Append(parts, part) == -1)
+            //        return -1;
             Py_DECREF(part);
-            if (payload == NULL) return -1;
+            i++;
+        }
+
+        if (i > 1) {
+            int j, k = 0;
+            size_t ps = 0;
+            for (j = 0; j < i; j++) {
+                ps += body_parts[j]->len;
+            }
+            char *all = malloc((ps + i));
+            for (k = 0; k < i; k++) {
+                strncpy(all, (char *)body_parts[k]->bytes, body_parts[k]->len + 1);
+            }
+            payload = PyString_FromStringAndSize(all, ps);
+            free(all);
+        }
+        else {
+            payload = PyString_FromStringAndSize(body_parts[0]->bytes, body_parts[0]->len);
         }
 
         PyDict_SetItemString(p, "body", payload);
