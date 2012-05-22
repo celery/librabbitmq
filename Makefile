@@ -42,3 +42,6 @@ clean: pyclean rabbitmq-clean
 
 distclean: pyclean rabbitmq-distclean
 	-rm -rf dist
+
+
+dist: distclean rabbitmq-c
