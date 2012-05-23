@@ -1,2 +1,7 @@
-Please see our Issue Tracker at GitHub:
+- exchange_unbind
+- heartbeats
+- publisher confirms
+- capabilities
+
+Also please see our Issue Tracker at GitHub:
     http://github.com/celery/librabbitmq/issues

@@ -14,9 +14,29 @@
 #endif
 
 #include <Python.h>
+#include <structmember.h>
 
 #include <amqp.h>
 #include <amqp_framing.h>
+
+#if PY_VERSION_HEX >= 0x03000000
+#  define FROM_FORMAT PyUnicode_FromFormat
+#  define PyInt_FromLong PyLong_FromLong
+#  define PyInt_FromSsize_t PyLong_FromSsize_t
+#else
+#  define FROM_FORMAT PyString_FromFormat
+#endif
+
+/* librabbitmq error codes */
+#define ERROR_NO_MEMORY 1
+#define ERROR_BAD_AMQP_DATA 2
+#define ERROR_UNKNOWN_CLASS 3
+#define ERROR_UNKNOWN_METHOD 4
+#define ERROR_GETHOSTBYNAME_FAILED 5
+#define ERROR_INCOMPATIBLE_AMQP_VERSION 6
+#define ERROR_CONNECTION_CLOSED 7
+#define ERROR_BAD_AMQP_URL 8
+#define ERROR_MAX 8
 
 
 typedef struct {
@@ -33,6 +53,8 @@ typedef struct {
 
     int sockfd;
     int connected;
+
+    PyObject *weakreflist;
 } PyRabbitMQ_Connection;
 
 /* utils */
@@ -51,13 +73,12 @@ int PyDict_to_basic_properties(PyObject *, amqp_basic_properties_t *,
 /* Exceptions */
 static PyObject *PyRabbitMQExc_ConnectionError;
 static PyObject *PyRabbitMQExc_ChannelError;
-static PyObject *PyRabbitMQExc_TimeoutError;
 
 /* Connection */
 static PyRabbitMQ_Connection* PyRabbitMQ_ConnectionType_new(PyTypeObject *,
        PyObject *, PyObject *);
 static void PyRabbitMQ_ConnectionType_dealloc(PyRabbitMQ_Connection *);
-static int PyRabbitMQ_Connection_init(PyRabbitMQ_Connection *,
+static int PyRabbitMQ_ConnectionType_init(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_fileno(PyRabbitMQ_Connection *);
 static PyObject *PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *);
@@ -76,6 +97,7 @@ static PyObject *PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_queue_bind(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
+static PyObject *PyRabbitMQ_Connection_repr(PyRabbitMQ_Connection *);
 static PyObject *PyRabbitMQ_Connection_queue_unbind(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_basic_get(PyRabbitMQ_Connection *,
@@ -88,13 +110,42 @@ static PyObject *PyRabbitMQ_Connection_basic_qos(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_basic_reject(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
+static PyObject *PyRabbitMQ_Connection_basic_recover(PyRabbitMQ_Connection *,
+        PyObject *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_basic_recv(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
 static PyObject *PyRabbitMQ_Connection_basic_consume(PyRabbitMQ_Connection *,
         PyObject *, PyObject *);
+static PyObject *PyRabbitMQ_Connection_basic_cancel(PyRabbitMQ_Connection *,
+        PyObject *, PyObject *);
+static PyObject *PyRabbitMQ_Connection_flow(PyRabbitMQ_Connection *,
+       PyObject *, PyObject *);
 static long long PyRabbitMQ_now_usec(void);
 static int PyRabbitMQ_wait_timeout(int, double);
 static int PyRabbitMQ_wait_nb(int);
+
+static PyMemberDef PyRabbitMQ_ConnectionType_members[] = {
+    {"hostname", T_STRING,
+        offsetof(PyRabbitMQ_Connection, hostname), READONLY, NULL},
+    {"userid", T_STRING,
+        offsetof(PyRabbitMQ_Connection, userid), READONLY, NULL},
+    {"password", T_STRING,
+        offsetof(PyRabbitMQ_Connection, password), READONLY, NULL},
+    {"virtual_host", T_STRING,
+        offsetof(PyRabbitMQ_Connection, virtual_host), READONLY, NULL},
+    {"port", T_INT,
+        offsetof(PyRabbitMQ_Connection, port), READONLY, NULL},
+    {"heartbeat", T_INT,
+        offsetof(PyRabbitMQ_Connection, heartbeat), READONLY, NULL},
+    {"connected", T_INT,
+        offsetof(PyRabbitMQ_Connection, connected), READONLY, NULL},
+    {"channel_max", T_INT,
+        offsetof(PyRabbitMQ_Connection, channel_max), READONLY, NULL},
+    {"frame_max", T_INT,
+        offsetof(PyRabbitMQ_Connection, frame_max), READONLY, NULL},
+    {NULL}  /* Sentinel */
+};
+
 
 static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
     {"fileno", (PyCFunction)PyRabbitMQ_Connection_fileno, METH_NOARGS},
@@ -142,65 +193,72 @@ static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
     {"_basic_qos", (PyCFunction)PyRabbitMQ_Connection_basic_qos,
         METH_VARARGS|METH_KEYWORDS,
         "basic.qos"},
+    {"_flow", (PyCFunction)PyRabbitMQ_Connection_flow,
+        METH_VARARGS|METH_KEYWORDS,
+        "channel.flow"},
+    {"_basic_recover", (PyCFunction)PyRabbitMQ_Connection_basic_recover,
+        METH_VARARGS|METH_KEYWORDS,
+        "basic.recover"},
     {"_basic_recv", (PyCFunction)PyRabbitMQ_Connection_basic_recv,
         METH_VARARGS|METH_KEYWORDS,
         "recv"},
     {"_basic_consume", (PyCFunction)PyRabbitMQ_Connection_basic_consume,
         METH_VARARGS|METH_KEYWORDS,
         "basic.consume"},
+    {"_basic_cancel", (PyCFunction)PyRabbitMQ_Connection_basic_cancel,
+        METH_VARARGS|METH_KEYWORDS,
+        "basic.cancel"},
     {NULL, NULL, 0, NULL}
 };
 
+
+PyDoc_STRVAR(PyRabbitMQ_ConnectionType_doc,
+    "AMQP Connection: \n\n"
+    "    Connection(hostname='localhost', userid='guest',\n"
+    "               password='guest', virtual_host'/',\n"
+    "               port=5672, channel_max=0xffff,\n"
+    "               frame_max=131072, heartbeat=0).\n\n"
+);
+
 static PyTypeObject PyRabbitMQ_ConnectionType = {
-    PyObject_HEAD_INIT(NULL)
-    0,
-    "connection",
-    sizeof(PyRabbitMQ_Connection),
-    0,
-    (destructor)PyRabbitMQ_ConnectionType_dealloc,
-
-    0,
-    0,
-    0,
-    0,
-    0,
-
-    0,
-    0,
-    0,
-
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
-    "rabbitmq connection type",
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    PyRabbitMQ_ConnectionType_methods,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    (initproc)PyRabbitMQ_Connection_init,
-    0,
-    (newfunc)PyRabbitMQ_ConnectionType_new, //PyType_GenericNew,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    PyVarObject_HEAD_INIT(NULL, 0)
+    /* tp_name           */ "_librabbitmq.Connection",
+    /* tp_basicsize      */ sizeof(PyRabbitMQ_Connection),
+    /* tp_itemsize       */ 0,
+    /* tp_dealloc        */ (destructor)PyRabbitMQ_ConnectionType_dealloc,
+    /* tp_print          */ 0,
+    /* tp_getattr        */ 0,
+    /* tp_setattr        */ 0,
+    /* tp_compare        */ 0,
+    /* tp_repr           */ (reprfunc)PyRabbitMQ_Connection_repr,
+    /* tp_as_number      */ 0,
+    /* tp_as_sequence    */ 0,
+    /* tp_as_mapping     */ 0,
+    /* tp_hash           */ 0,
+    /* tp_call           */ 0,
+    /* tp_str            */ 0,
+    /* tp_getattro       */ 0,
+    /* tp_setattro       */ 0,
+    /* tp_as_buffer      */ 0,
+    /* tp_flags          */ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE |
+                            Py_TPFLAGS_HAVE_WEAKREFS,
+    /* tp_doc            */ PyRabbitMQ_ConnectionType_doc,
+    /* tp_traverse       */ 0,
+    /* tp_clear          */ 0,
+    /* tp_richcompare    */ 0,
+    /* tp_weaklistoffset */ offsetof(PyRabbitMQ_Connection, weakreflist),
+    /* tp_iter           */ 0,
+    /* tp_iternext       */ 0,
+    /* tp_methods        */ PyRabbitMQ_ConnectionType_methods,
+    /* tp_members        */ PyRabbitMQ_ConnectionType_members,
+    /* tp_getset         */ 0,
+    /* tp_base           */ 0,
+    /* tp_dict           */ 0,
+    /* tp_descr_get      */ 0,
+    /* tp_descr_set      */ 0,
+    /* tp_dictoffset     */ 0,
+    /* tp_init           */ (initproc)PyRabbitMQ_ConnectionType_init,
+    /* tp_alloc          */ 0,
+    /* tp_new            */ (newfunc)PyRabbitMQ_ConnectionType_new,
 };
 #endif /* __PYLIBRABBIT_H__ */

@@ -45,3 +45,8 @@ distclean: pyclean rabbitmq-distclean
 
 
 dist: distclean rabbitmq-c
+
+
+rebuild:
+	python setup.py build
+	python setup.py install

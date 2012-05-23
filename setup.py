@@ -4,7 +4,40 @@ import sys
 from glob import glob
 from setuptools import setup, find_packages
 
+LRMQPATH = lambda *x: os.path.join("rabbitmq-c", "librabbitmq", *x)
+
 # --with-librabbitmq=<dir>: path to librabbitmq package if needed
+
+SPECPATH = lambda *x: os.path.join("rabbitmq-codegen", *x)
+
+
+def senv(*k__v, **kwargs):
+    sep = kwargs.get("sep", ' ')
+    restore = {}
+    for k, v in k__v:
+        prev = restore[k] = os.environ.get(k)
+        os.environ[k] = (prev + sep if prev else "") + str(v)
+    return dict((k, v) for k, v in restore.iteritems() if v is not None)
+
+
+def codegen():
+    codegen = LRMQPATH("codegen.py")
+    spec = SPECPATH("amqp-rabbitmq-0.9.1.json")
+    sys.path.insert(0, SPECPATH())
+    commands = [
+        (sys.executable, codegen, "header", spec, LRMQPATH("amqp_framing.h")),
+        (sys.executable, codegen, "body", spec, LRMQPATH("amqp_framing.c")),
+    ]
+    restore = senv(("PYTHONPATH", SPECPATH()), sep=':')
+    try:
+        for command in commands:
+            print("- generating %r" % command[-1])
+            print(" ".join(command))
+            os.system(" ".join(command))
+    finally:
+        os.environ.update(restore)
+
+
 
 def create_builder():
     from setuptools import Extension
@@ -41,11 +74,26 @@ def create_builder():
     incdirs.append(os.path.join(os.path.abspath(
         os.getcwd()), "rabbitmq-c", "librabbitmq",
     ))
-    libdirs.append(os.path.join(os.path.abspath(
-        os.getcwd()), "rabbitmq-c", "librabbitmq", ".libs",
-    ))
 
-    librabbitmq_ext = Extension("_librabbitmq", ["librabbitmq/_rabbitmqmodule.c"],
+    PyC_files = [os.path.join("librabbitmq", "_rabbitmqmodule.c")]
+
+    #librabbit_files = map(LRMQPATH, [
+    #    "amqp_api.c",
+    #    "amqp_mem.c",
+    #    "amqp_url.c",
+    #    "amqp_connection.c",
+    #    "amqp_socket.c",
+    #    "amqp_framing.c",
+    #    "amqp_table.c",
+    #])
+    #
+    #incdirs.append("rabbitmq-c")  # for config.h
+    #if platform.system() == 'Windows':
+    #    incdirs.append(LRMQPATH("windows"))
+    #else:
+    #    incdirs.append(LRMQPATH("unix"))
+
+    librabbitmq_ext = Extension("_librabbitmq", PyC_files, # + librabbit_files,
                             libraries=libs, include_dirs=incdirs,
                             library_dirs=libdirs, define_macros=defs)
 
@@ -75,7 +123,7 @@ def create_builder():
                     os.chdir(H("rabbitmq-c"))
                     if not os.path.isfile("config.h"):
                         print("- configure rabbitmq-c...")
-                        os.system("/bin/sh %s --disable-dependency-tracking" % (
+                        os.system("/bin/sh %s --enable-64bit --disable-dependency-tracking" % (
                             H("rabbitmq-c", "configure"), ))
                     print("- make rabbitmq-c...")
                     os.chdir(H("rabbitmq-c", "librabbitmq"))
@@ -84,9 +132,14 @@ def create_builder():
                     os.environ.update(restore)
             finally:
                 os.chdir(here)
-            os.environ["LDFLAGS"] = " ".join(["%s" % f
-                for f in glob(H("rabbitmq-c", "librabbitmq", "*.o"))])
-            _build.run(self)
+            codegen()
+            restore = senv(
+                ("LDFLAGS", ' '.join(glob(LRMQPATH("*.o")))),
+            )
+            try:
+                _build.run(self)
+            finally:
+                os.environ.update(restore)
     return librabbitmq_ext, build
 
 
@@ -95,14 +148,6 @@ def find_make(alt=("gmake", "gnumake", "make", "nmake")):
         for make in (os.path.join(path, m) for m in alt):
             if os.path.isfile(make):
                 return make
-
-
-def senv(*k__v):
-    restore = {}
-    for k, v in k__v:
-        prev = restore[k] = os.environ.get(k)
-        os.environ[k] = (prev + " " if prev else "") + str(v)
-    return dict((k, v) for k, v in restore.iteritems() if v is not None)
 
 
 long_description = open("README.rst", "U").read()
