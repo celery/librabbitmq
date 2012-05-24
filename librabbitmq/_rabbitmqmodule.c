@@ -183,7 +183,7 @@ static void PyRabbitMQ_ConnectionType_dealloc(PyRabbitMQ_Connection *self) {
     if (self->weakreflist != NULL) {
         PyObject_ClearWeakRefs((PyObject*)self);
     }
-    PyObject_Del(self);
+    self->ob_type->tp_free(self);
 }
 
 
@@ -643,8 +643,11 @@ int PyRabbitMQ_recv(PyObject *p, amqp_connection_state_t conn, int piggyback) {
         // p["body"]
         body_target = frame.payload.properties.body_size;
         body_received = 0;
-        PyObject *parts = PyList_New(0);
-        while (body_received < body_target) {
+        char *buf = NULL;
+        int i = 0, j = 0;
+        amqp_bytes_t *zp = NULL;
+
+        for (i = 0; body_received < body_target; i++) {
             PyObject *part;
             Py_BEGIN_ALLOW_THREADS;
             retval = amqp_simple_wait_frame(conn, &frame);
@@ -658,18 +661,36 @@ int PyRabbitMQ_recv(PyObject *p, amqp_connection_state_t conn, int piggyback) {
             }
 
             body_received += frame.payload.body_fragment.len;
-            part = PySTRING_FROM_AMQBYTES(frame.payload.body_fragment);
-            if (PyList_Append(parts, part) == -1)
-                return -1;
-            Py_DECREF(part);
-        }
+            if (!i) {
+                if (body_received < body_target) {
+                    payload = PyString_FromStringAndSize(NULL, (int)body_target);
+                    if (!payload)
+                        return -1;
+                    buf = PyString_AsString(payload);
+                    if (!buf) {
+                        Py_DECREF(payload);
+                        return -1;
+                    }
 
-        PyObject *sep = PyString_FromString("");
-        payload = _PyString_Join(sep, parts);
+                }
+                else {
+                    payload = PyString_FromStringAndSize(
+                    (const char*)frame.payload.body_fragment.bytes,
+                                 frame.payload.body_fragment.len);
+                    if (!payload)
+                        return -1;
+                    break;
+                }
+            }
+            for (j = 0;
+                 j < frame.payload.body_fragment.len;
+                 *buf++ = *(char *)frame.payload.body_fragment.bytes++, j++);
+            //strncat(buf, frame.payload.body_fragment.bytes, frame.payload.body_fragment.len);
+        }
+        if (!payload)
+            return -1;
         PyDict_SetItemString(p, "body", payload);
         Py_DECREF(payload);
-        Py_DECREF(sep);
-        Py_DECREF(parts);
         break;
     }
     amqp_maybe_release_buffers(conn);
