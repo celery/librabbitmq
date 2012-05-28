@@ -8,22 +8,24 @@
 #include <amqp_framing.h>
 
 #if PY_VERSION_HEX >= 0x02060000 // 2.6 and up
-#  define PY_SIZE_TYPE long
-#  define PYINT_FROM_SSIZE_T PyInt_FromLong
-#  define PYINT_AS_SSIZE_T PyInt_AsLong
-# else                           // 2.5 and below
 #  define PY_SSIZE_T_CLEAN
-#  define PY_SIZE_TYPE Py_ssize_t
-#  define PYINT_FROM_SSIZE_T PyInt_FromSsize_t
-#  define PYINT_AS_SSIZE_T PyInt_AsSsize_t
+#  define PY_SIZE_TYPE        Py_ssize_t
+#  define PyLong_FROM_SSIZE_T PyLong_FromSsize_t
+#  define PyLong_AS_SSIZE_T   PyLong_AsSsize_t
+# else                           // 2.5 and below
+#  define PY_SIZE_TYPE        unsigned long
+#  define PyLong_FROM_SSIZE_T PyLong_FromUnsignedLong
+#  define PyLong_AS_SSIZE_T   PyLong_AsUnsignedLong
 #endif
 
 #if PY_VERSION_HEX >= 0x03000000 // 3.0 and up
 #  define FROM_FORMAT PyUnicode_FromFormat
 #  define PyInt_FromLong PyLong_FromLong
 #  define PyInt_FromSsize_t PyLong_FromSsize_t
+#  define PyString_INTERN_FROM_STRING PyString_FromString
 #else                            // 2.x
 #  define FROM_FORMAT PyString_FromFormat
+#  define PyString_INTERN_FROM_STRING PyString_InternFromString
 #endif
 
 #ifndef _PYRMQ_INLINE
@@ -43,7 +45,7 @@
     ({                                                              \
         value = stmt;                                               \
         PyDict_SetItemString(dict, key, value);                     \
-        Py_DECREF(value);                                           \
+        Py_XDECREF(value);                                           \
     })
 
 #define PyDICT_SETSTRKEY_DECREF(dict, key, value, kstmt, vstmt)     \
@@ -51,8 +53,8 @@
         key = kstmt;                                                \
         value = vstmt;                                              \
         PyDict_SetItem(dict, key, value);                           \
-        Py_DECREF(key);                                             \
-        Py_DECREF(value);                                           \
+        Py_XDECREF(key);                                             \
+        Py_XDECREF(value);                                           \
     })
 
 #define PySTRING_FROM_AMQBYTES(member)                              \
@@ -63,8 +65,20 @@
             PySTRING_FROM_AMQBYTES(table->headers.entries[i].key),  \
             stmt);                                                  \
 
-#define AMQTable_HVAL(table, index, typ)   \
+#define PYRMQ_IS_TIMEOUT(t)   (t > 0.0)
+#define PYRMQ_IS_NONBLOCK(t)  (t == -1)
+#define PYRMQ_SHOULD_POLL(t)  (PYRMQ_IS_TIMEOUT(t) || PYRMQ_IS_NONBLOCK(t))
+
+#define RabbitMQ_WAIT(sockfd, timeout)                              \
+    (PYRMQ_IS_TIMEOUT(timeout)                                      \
+            ? RabbitMQ_wait_timeout(sockfd, timeout)                \
+            : RabbitMQ_wait_nb(sockfd))
+
+#define AMQTable_HVAL(table, index, typ)                            \
     table->headers.entries[index].value.value.typ
+
+#define AMQP_ACTIVE_BUFFERS(state)                                  \
+    (amqp_data_in_buffer(state) || amqp_frames_enqueued(state))
 
 
 /* Connection object */
@@ -88,20 +102,9 @@ typedef struct {
     PyObject *weakreflist;
 } PyRabbitMQ_Connection;
 
-/* utils */
-_PYRMQ_INLINE void AMQTable_SetStringValue(amqp_connection_state_t,
-        amqp_table_t *, amqp_bytes_t, amqp_bytes_t);
-
-_PYRMQ_INLINE void AMQTable_SetIntValue(amqp_connection_state_t,
-        amqp_table_t *, amqp_bytes_t, int);
-
-amqp_table_entry_t *AMQTable_AddEntry(amqp_connection_state_t,
-        amqp_table_t *, amqp_bytes_t);
-int PyDict_to_basic_properties(PyObject *, amqp_basic_properties_t *,
-                                amqp_connection_state_t);
-static long long PyRabbitMQ_now_usec(void);
-static int PyRabbitMQ_wait_timeout(int, double);
-static int PyRabbitMQ_wait_nb(int);
+int
+PyDict_to_basic_properties(PyObject *, amqp_basic_properties_t *,
+                           amqp_connection_state_t);
 
 /* Connection method sigs */
 static PyRabbitMQ_Connection*
@@ -111,7 +114,8 @@ static void
 PyRabbitMQ_ConnectionType_dealloc(PyRabbitMQ_Connection *);
 
 static int
-PyRabbitMQ_ConnectionType_init(PyRabbitMQ_Connection *, PyObject *, PyObject *);
+PyRabbitMQ_ConnectionType_init(PyRabbitMQ_Connection *,
+                               PyObject *, PyObject *);
 
 static PyObject*
 PyRabbitMQ_Connection_fileno(PyRabbitMQ_Connection *);
@@ -209,69 +213,52 @@ static PyMemberDef PyRabbitMQ_ConnectionType_members[] = {
 
 /* Connection methods */
 static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
-    {"fileno", (PyCFunction)PyRabbitMQ_Connection_fileno, METH_NOARGS},
-    {"_do_connect", (PyCFunction)PyRabbitMQ_Connection_connect, METH_NOARGS,
-        "Establish connection to the server."},
-    {"_close", (PyCFunction)PyRabbitMQ_Connection_close, METH_NOARGS,
-        "Close connection."},
-    {"_channel_open", (PyCFunction)PyRabbitMQ_Connection_channel_open, METH_VARARGS,
-        "Create new channel"},
-    {"_channel_close", (PyCFunction)PyRabbitMQ_Connection_channel_close, METH_VARARGS,
-        "Close channel"},
+    {"fileno", (PyCFunction)PyRabbitMQ_Connection_fileno,
+        METH_NOARGS, "File descriptor number."},
+    {"connect", (PyCFunction)PyRabbitMQ_Connection_connect,
+        METH_NOARGS, "Establish connection to the broker."},
+    {"_close", (PyCFunction)PyRabbitMQ_Connection_close,
+        METH_NOARGS, "Close connection."},
+    {"_channel_open", (PyCFunction)PyRabbitMQ_Connection_channel_open,
+        METH_VARARGS, "Create new channel"},
+    {"_channel_close", (PyCFunction)PyRabbitMQ_Connection_channel_close,
+        METH_VARARGS, "Close channel"},
     {"_basic_publish", (PyCFunction)PyRabbitMQ_Connection_basic_publish,
-        METH_VARARGS|METH_KEYWORDS,
-        "Publish message"},
+        METH_VARARGS, "Publish message"},
     {"_exchange_declare", (PyCFunction)PyRabbitMQ_Connection_exchange_declare,
-        METH_VARARGS|METH_KEYWORDS,
-        "Declare an exchange"},
+        METH_VARARGS, "Declare an exchange"},
     {"_exchange_delete", (PyCFunction)PyRabbitMQ_Connection_exchange_delete,
-        METH_VARARGS|METH_KEYWORDS,
-        "Delete an exchange"},
+        METH_VARARGS, "Delete an exchange"},
     {"_queue_declare", (PyCFunction)PyRabbitMQ_Connection_queue_declare,
-        METH_VARARGS|METH_KEYWORDS,
-        "Declare a queue"},
+        METH_VARARGS, "Declare a queue"},
     {"_queue_bind", (PyCFunction)PyRabbitMQ_Connection_queue_bind,
-        METH_VARARGS|METH_KEYWORDS,
-        "Bind queue"},
+        METH_VARARGS, "Bind queue"},
     {"_queue_unbind", (PyCFunction)PyRabbitMQ_Connection_queue_unbind,
-        METH_VARARGS|METH_KEYWORDS,
-        "Unbind queue"},
+        METH_VARARGS, "Unbind queue"},
     {"_queue_delete", (PyCFunction)PyRabbitMQ_Connection_queue_delete,
-        METH_VARARGS|METH_KEYWORDS,
-        "Delete queue"},
+        METH_VARARGS, "Delete queue"},
     {"_basic_get", (PyCFunction)PyRabbitMQ_Connection_basic_get,
-        METH_VARARGS|METH_KEYWORDS,
-        "basic.get"},
+        METH_VARARGS, "Try to receive message synchronously."},
     {"_queue_purge", (PyCFunction)PyRabbitMQ_Connection_queue_purge,
-        METH_VARARGS|METH_KEYWORDS,
-        "queue.purge"},
+        METH_VARARGS, "Purge all messages from queue."},
     {"_basic_ack", (PyCFunction)PyRabbitMQ_Connection_basic_ack,
-        METH_VARARGS|METH_KEYWORDS,
-        "basic.ack"},
+        METH_VARARGS, "Acknowledge message."},
     {"_basic_reject", (PyCFunction)PyRabbitMQ_Connection_basic_reject,
-        METH_VARARGS|METH_KEYWORDS,
-        "basic.reject"},
+        METH_VARARGS, "Reject message."},
     {"_basic_qos", (PyCFunction)PyRabbitMQ_Connection_basic_qos,
-        METH_VARARGS|METH_KEYWORDS,
-        "basic.qos"},
+        METH_VARARGS, "Set Quality of Service settings."},
     {"_flow", (PyCFunction)PyRabbitMQ_Connection_flow,
-        METH_VARARGS|METH_KEYWORDS,
-        "channel.flow"},
+        METH_VARARGS, "Enable/disable channel flow."},
     {"_basic_recover", (PyCFunction)PyRabbitMQ_Connection_basic_recover,
-        METH_VARARGS|METH_KEYWORDS,
-        "basic.recover"},
+        METH_VARARGS, "Recover all unacked messages."},
     {"_basic_recv", (PyCFunction)PyRabbitMQ_Connection_basic_recv,
-        METH_VARARGS|METH_KEYWORDS,
-        "recv"},
+        METH_VARARGS, "Receive events from socket."},
     {"_basic_consume", (PyCFunction)PyRabbitMQ_Connection_basic_consume,
-        METH_VARARGS|METH_KEYWORDS,
-        "basic.consume"},
+        METH_VARARGS, "Start consuming messages from queue."},
     {"_basic_cancel", (PyCFunction)PyRabbitMQ_Connection_basic_cancel,
-        METH_VARARGS|METH_KEYWORDS,
-        "basic.cancel"},
+        METH_VARARGS, "Cancel consuming from a queue."},
     {NULL, NULL, 0, NULL}
 };
-
 
 /* Connection.__doc__ */
 PyDoc_STRVAR(PyRabbitMQ_ConnectionType_doc,
