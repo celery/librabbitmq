@@ -1525,9 +1525,7 @@ PyRabbitMQ_Connection_basic_get(PyRabbitMQ_Connection *self,
                                  ok->routing_key,
                                  ok->redelivered);
     if (amqp_data_in_buffer(self->conn)) {
-        printf("+recv\n");
         if (PyRabbitMQ_recv(self, p, self->conn, 1) < 0) {
-            printf("-recv\n");
             if (!PyErr_Occurred())
                 PyErr_SetString(PyRabbitMQExc_ChannelError,
                         "Bad frame read");
