@@ -62,11 +62,13 @@ class Channel(object):
                                 frame["body"]))
 
     def basic_consume(self, queue="", consumer_tag=None, no_local=False,
-            no_ack=False, exclusive=False, callback=None, nowait=False):
+            no_ack=False, exclusive=False, callback=None, arguments=None,
+            nowait=False):
         if consumer_tag is None:
             consumer_tag = self.next_consumer_tag()
         consumer_tag = self.connection._basic_consume(self.channel_id,
-                queue, str(consumer_tag), no_local, no_ack, exclusive)
+                queue, str(consumer_tag), no_local, no_ack, exclusive,
+                arguments or {})
         self.connection.callbacks[self.channel_id][consumer_tag] = callback
         if no_ack:
             self.no_ack_consumers.add(consumer_tag)
@@ -98,8 +100,13 @@ class Channel(object):
     def exchange_declare(self, exchange="", type="direct",
             passive=False, durable=False, auto_delete=False, arguments=None,
             nowait=False):
+        """Declare exchange.
+
+        :keyword auto_delete: Not recommended and so it is ignored.
+
+        """
         return self.connection._exchange_declare(self.channel_id,
-                exchange, type, passive, durable, auto_delete)
+                exchange, type, passive, durable, auto_delete, arguments or {})
 
     def exchange_delete(self, exchange="", if_unused=False):
         return self.connection._exchange_delete(self.channel_id,
@@ -109,17 +116,18 @@ class Channel(object):
             exclusive=False, auto_delete=False, arguments=None,
             nowait=False):
         return self.connection._queue_declare(self.channel_id,
-                queue, passive, durable, exclusive, auto_delete)
+                queue, passive, durable, exclusive, auto_delete,
+                arguments or {})
 
     def queue_bind(self, queue="", exchange="", routing_key="",
             arguments=None, nowait=False):
         return self.connection._queue_bind(self.channel_id,
-                queue, exchange, routing_key)
+                queue, exchange, routing_key, arguments or {})
 
     def queue_unbind(self, queue="", exchange="", binding_key="",
-            nowait=False):
+            arguments=None, nowait=False):
         return self.connection._queue_unbind(self.channel_id,
-                queue, exchange, binding_key)
+                queue, exchange, binding_key, arguments or {})
 
     def queue_delete(self, queue="", if_unused=False, if_empty=False):
         return self.connection._queue_delete(self.channel_id,
@@ -170,7 +178,7 @@ class Connection(_librabbitmq.Connection):
             timeout = 0.0
         else:
             timeout = float(timeout)
-        self._basic_recv(timeout=timeout)
+        self._basic_recv(timeout)
 
     def channel(self, channel_id=None):
         if channel_id is None:
