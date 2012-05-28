@@ -90,6 +90,8 @@ class Channel(object):
             mandatory=False, immediate=False, **properties):
         if isinstance(body, tuple):
             body, properties = body
+        elif isinstance(body, self.Message):
+            body, properties = body.body, body.properties
         return self.connection._basic_publish(self.channel_id,
                 body, exchange, routing_key, properties,
                 mandatory, immediate)
