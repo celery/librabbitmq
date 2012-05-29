@@ -65,6 +65,18 @@
             PySTRING_FROM_AMQBYTES(table->headers.entries[i].key),  \
             stmt);                                                  \
 
+
+#define Maybe_DECODE_UNICODE(s, errStatement)                       \
+    ({                                                              \
+        if (PyUnicode_Check(s)) {                                   \
+            PyObject *__muTemp = NULL;                              \
+            if ((__muTemp = PyUnicode_AsASCIIString(s)) == NULL) {  \
+                errStatement;                                       \
+            }                                                       \
+            s = __muTemp;                                           \
+        }                                                           \
+    })
+
 #define PYRMQ_IS_TIMEOUT(t)   (t > 0.0)
 #define PYRMQ_IS_NONBLOCK(t)  (t == -1)
 #define PYRMQ_SHOULD_POLL(t)  (PYRMQ_IS_TIMEOUT(t) || PYRMQ_IS_NONBLOCK(t))
