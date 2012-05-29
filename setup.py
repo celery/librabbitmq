@@ -117,6 +117,12 @@ def create_builder():
         sys.exit(0)
 
     class build(_build):
+        stdcflags = [
+            "-W -Wall -ansi",
+        ]
+        if os.environ.get("PEDANTIC"):
+            # Python.h breaks -pedantic, so can only use it while developing.
+            stdcflags.append("-pedantic -Werror")
 
         def run(self):
             here = os.path.abspath(os.getcwd())
@@ -142,6 +148,7 @@ def create_builder():
             #codegen()
             restore = senv(
                 ("LDFLAGS", ' '.join(glob(LRMQPATH("*.o")))),
+                ("CFLAGS", ' '.join(self.stdcflags)),
             )
             try:
                 _build.run(self)

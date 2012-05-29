@@ -7,75 +7,88 @@
 #include <amqp.h>
 #include <amqp_framing.h>
 
-#if PY_VERSION_HEX >= 0x02060000 // 2.6 and up
+#if PY_VERSION_HEX >= 0x02060000 /* 2.6 and up */
 #  define PY_SSIZE_T_CLEAN
 #  define PY_SIZE_TYPE        Py_ssize_t
 #  define PyLong_FROM_SSIZE_T PyLong_FromSsize_t
 #  define PyLong_AS_SSIZE_T   PyLong_AsSsize_t
-# else                           // 2.5 and below
+# else                           /* 2.5 and below */
 #  define PY_SIZE_TYPE        unsigned long
 #  define PyLong_FROM_SSIZE_T PyLong_FromUnsignedLong
 #  define PyLong_AS_SSIZE_T   PyLong_AsUnsignedLong
 #endif
 
-#if PY_VERSION_HEX >= 0x03000000 // 3.0 and up
+#if PY_VERSION_HEX >= 0x03000000 /* 3.0 and up */
 #  define FROM_FORMAT PyUnicode_FromFormat
 #  define PyInt_FromLong PyLong_FromLong
 #  define PyInt_FromSsize_t PyLong_FromSsize_t
 #  define PyString_INTERN_FROM_STRING PyString_FromString
-#else                            // 2.x
+#else                            /* 2.x */
 #  define FROM_FORMAT PyString_FromFormat
 #  define PyString_INTERN_FROM_STRING PyString_InternFromString
 #endif
 
+#if defined __GNUC__ && !defined __GNUC_STDC_INLINE__ && !defined __GNUC_GNU_INLINE__
+# define __GNUC_GNU_INLINE__ 1
+#endif
+
 #ifndef _PYRMQ_INLINE
-# if __GNUC__ && !__GNUC_STDC_INLINE__
-#  define _PYRMQ_INLINE extern inline
+# if defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__)
+#  define _PYRMQ_INLINE extern __inline
 # else
-#  define _PYRMQ_INLINE inline
+#  define _PYRMQ_INLINE __inline
 # endif
 #endif
 
-/* macros */
-#define PyString_AS_AMQBYTES(ob)                                    \
-        (amqp_bytes_t){.len = Py_SIZE(ob),                          \
-                       .bytes=(void*)PyString_AS_STRING(ob)}
-
-#define PyDICT_SETSTR_DECREF(dict, key, value, stmt)                \
-    ({                                                              \
-        value = stmt;                                               \
+#define PyDICT_SETSTR_DECREF(dict, key, value)                      \
+    do {                                                            \
         PyDict_SetItemString(dict, key, value);                     \
-        Py_XDECREF(value);                                           \
-    })
+        Py_DECREF(value);                                           \
+    } while (0)
 
-#define PyDICT_SETSTRKEY_DECREF(dict, key, value, kstmt, vstmt)     \
-    ({                                                              \
-        key = kstmt;                                                \
-        value = vstmt;                                              \
+#define PyDICT_SETKV_DECREF(dict, key, value)                       \
+    do {                                                            \
         PyDict_SetItem(dict, key, value);                           \
-        Py_XDECREF(key);                                             \
-        Py_XDECREF(value);                                           \
-    })
+        Py_XDECREF(key);                                            \
+        Py_XDECREF(value);                                          \
+    } while(0)
 
 #define PySTRING_FROM_AMQBYTES(member)                              \
         PyString_FromStringAndSize(member.bytes, member.len);       \
+
+#define AMQTable_TO_PYKEY(table, i)                                 \
+        PySTRING_FROM_AMQBYTES(table->headers.entries[i].key)
 
 #define PyDICT_SETKEY_AMQTABLE(dict, k, v, table, stmt)             \
         PyDICT_SETSTRKEY_DECREF(dict, k, v,                         \
             PySTRING_FROM_AMQBYTES(table->headers.entries[i].key),  \
             stmt);                                                  \
 
+_PYRMQ_INLINE PyObject* Maybe_Unicode(PyObject *);
 
-#define Maybe_DECODE_UNICODE(s, errStatement)                       \
-    ({                                                              \
-        if (PyUnicode_Check(s)) {                                   \
-            PyObject *__muTemp = NULL;                              \
-            if ((__muTemp = PyUnicode_AsASCIIString(s)) == NULL) {  \
-                errStatement;                                       \
-            }                                                       \
-            s = __muTemp;                                           \
-        }                                                           \
-    })
+#if defined(__C99__) || defined(__GNUC__)
+#  define PyString_AS_AMQBYTES(s)                                   \
+      (amqp_bytes_t){Py_SIZE(s), (void *)PyString_AS_STRING(s)}
+#else
+_PYRMQ_INLINE amqp_bytes_t PyString_AS_AMQBYTES(PyObject *);
+_PYRMQ_INLINE amqp_bytes_t
+PyString_AS_AMQBYTES(PyObject *s)
+{
+    amqp_bytes_t ret;
+    ret.len = Py_SIZE(s);
+    ret.bytes = (void *)PyString_AS_STRING(s);
+    /*{Py_SIZE(s), (void *)PyString_AS_STRING(s)};*/
+    return ret;
+}
+#endif
+
+_PYRMQ_INLINE PyObject*
+Maybe_Unicode(PyObject *s)
+{
+    if (PyUnicode_Check(s))
+        return PyUnicode_AsASCIIString(s);
+    return s;
+}
 
 #define PYRMQ_IS_TIMEOUT(t)   (t > 0.0)
 #define PYRMQ_IS_NONBLOCK(t)  (t == -1)
@@ -220,7 +233,7 @@ static PyMemberDef PyRabbitMQ_ConnectionType_members[] = {
         offsetof(PyRabbitMQ_Connection, frame_max), READONLY, NULL},
     {"callbacks", T_OBJECT_EX,
         offsetof(PyRabbitMQ_Connection, callbacks), READONLY, NULL},
-    {NULL}  /* Sentinel */
+    {NULL, 0, 0, 0, NULL}  /* Sentinel */
 };
 
 /* Connection methods */
@@ -321,5 +334,14 @@ static PyTypeObject PyRabbitMQ_ConnectionType = {
     /* tp_init           */ (initproc)PyRabbitMQ_ConnectionType_init,
     /* tp_alloc          */ 0,
     /* tp_new            */ (newfunc)PyRabbitMQ_ConnectionType_new,
+    /* tp_free           */ 0,
+    /* tp_is_gc          */ 0,
+    /* tp_bases          */ 0,
+    /* tp_mro            */ 0,
+    /* tp_cache          */ 0,
+    /* tp_subclasses     */ 0,
+    /* tp_weaklist       */ 0,
+    /* tp_del            */ 0,
+    /* tp_version_tag    */ 0x010000000,
 };
 #endif /* __PYLIBRABBIT_CONNECTION_H__ */
