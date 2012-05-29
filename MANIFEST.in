@@ -7,8 +7,9 @@ include LICENSE-MPL-RabbitMQ
 include TODO
 include setup.cfg
 recursive-include librabbitmq *
+recursive-include Modules *
 recursive-include tests *
-recursive-include rabbitmq-c *
+recursive-include clib *
 recursive-include rabbitmq-codegen *
 prune *.pyc
 prune *.o

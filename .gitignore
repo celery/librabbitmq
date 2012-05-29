@@ -52,3 +52,6 @@ tools/amqp-declare-queue
 tools/amqp-delete-queue
 tools/.*\.[17]$
 tools/doc/man-date.ent
+
+clib/
+

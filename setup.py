@@ -7,7 +7,8 @@ from setuptools import setup, find_packages
 # --with-librabbitmq=<dir>: path to librabbitmq package if needed
 
 
-LRMQPATH = lambda *x: os.path.join("rabbitmq-c", "librabbitmq", *x)
+LRMQDIST = lambda *x: os.path.join("clib", *x)
+LRMQSRC = lambda *x: LRMQDIST("librabbitmq", *x)
 SPECPATH = lambda *x: os.path.join("rabbitmq-codegen", *x)
 PYCP = lambda *x: os.path.join("Modules", "_librabbitmq", *x)
 
@@ -23,12 +24,12 @@ def senv(*k__v, **kwargs):
 
 
 def codegen():
-    codegen = LRMQPATH("codegen.py")
+    codegen = LRMQSRC("codegen.py")
     spec = SPECPATH("amqp-rabbitmq-0.9.1.json")
     sys.path.insert(0, SPECPATH())
     commands = [
-        (sys.executable, codegen, "header", spec, LRMQPATH("amqp_framing.h")),
-        (sys.executable, codegen, "body", spec, LRMQPATH("amqp_framing.c")),
+        (sys.executable, codegen, "header", spec, LRMQSRC("amqp_framing.h")),
+        (sys.executable, codegen, "body", spec, LRMQSRC("amqp_framing.c")),
     ]
     restore = senv(("PYTHONPATH", SPECPATH()), sep=':')
     try:
@@ -70,36 +71,30 @@ def create_builder():
         unprocessed.append(arg)
     sys.argv[1:] = unprocessed
 
-    #for pkgdir in pkgdirs:
-    #    incdirs.append(os.path.join(pkgdir, "include"))
-    #    libdirs.append(os.path.join(pkgdir, "lib"))
-    incdirs.append(os.path.join(os.path.abspath(
-        os.getcwd()), "rabbitmq-c", "librabbitmq",
-    ))
-    PyC_files = [
-        PYCP("connection.c"),
-        #PYCP("message.c"),
-    ]
-    #librabbit_files = map(LRMQPATH, [
-    #    "amqp_api.c",
-    #    "amqp_mem.c",
-    #    "amqp_url.c",
-    #    "amqp_connection.c",
-    #    "amqp_socket.c",
-    #    "amqp_framing.c",
-    #    "amqp_table.c",
-    #])
+    incdirs.append(LRMQSRC())
+    PyC_files = map(PYCP, [
+        "connection.c",
+    ])
+    librabbit_files = map(LRMQSRC, [
+        "amqp_api.c",
+        "amqp_mem.c",
+        "amqp_url.c",
+        "amqp_connection.c",
+        "amqp_socket.c",
+        "amqp_framing.c",
+        "amqp_table.c",
+    ])
 
-    #incdirs.append("rabbitmq-c")  # for config.h
-    #if platform.system() == 'Windows':
-    #    incdirs.append(LRMQPATH("windows"))
-    #    librabbit_files.append(LRMQPATH("windows", "socket.c"))
-    #else:
-    #    incdirs.append(LRMQPATH("unix"))
-    #    librabbit_files.append(LRMQPATH("unix", "socket.c"))
+    incdirs.append(LRMQDIST())  # for config.h
+    if platform.system() == 'Windows':
+        incdirs.append(LRMQSRC("windows"))
+        librabbit_files.append(LRMQSRC("windows", "socket.c"))
+    else:
+        incdirs.append(LRMQSRC("unix"))
+        librabbit_files.append(LRMQSRC("unix", "socket.c"))
 
     librabbitmq_ext = Extension("_librabbitmq",
-                            sources=PyC_files,# + librabbit_files,
+                            sources=PyC_files + librabbit_files,
                             libraries=libs, include_dirs=incdirs,
                             library_dirs=libdirs, define_macros=defs)
                             #depends=(glob(PYCP("*.h")) + ["setup.py"]))
@@ -133,23 +128,22 @@ def create_builder():
                 restore = senv(("CFLAGS", config["CFLAGS"]),
                     ("LDFLAGS", config["LDFLAGS"]))
                 try:
-                    os.chdir(H("rabbitmq-c"))
+                    os.chdir(LRMQDIST())
                     if not os.path.isfile("config.h"):
                         print("- configure rabbitmq-c...")
-                        os.system("/bin/sh %s --disable-dependency-tracking" % (
-                            H("rabbitmq-c", "configure"), ))
-                    print("- make rabbitmq-c...")
-                    os.chdir(H("rabbitmq-c", "librabbitmq"))
-                    os.system('"%s" all' % find_make())
+                        os.system("/bin/sh configure --disable-dependency-tracking")
+                    #print("- make rabbitmq-c...")
+                    #os.chdir(LRMQSRC())
+                    #os.system('"%s" all' % find_make())
                 finally:
                     os.environ.update(restore)
             finally:
                 os.chdir(here)
-            #codegen()
             restore = senv(
-                ("LDFLAGS", ' '.join(glob(LRMQPATH("*.o")))),
+                #("LDFLAGS", ' '.join(glob(LRMQSRC("*.o")))),
                 ("CFLAGS", ' '.join(self.stdcflags)),
             )
+            codegen()
             try:
                 _build.run(self)
             finally:
