@@ -72,6 +72,7 @@ class Channel(object):
         self.connection.callbacks[self.channel_id][consumer_tag] = callback
         if no_ack:
             self.no_ack_consumers.add(consumer_tag)
+        return consumer_tag
 
     def basic_ack(self, delivery_tag, multiple=False):
         return self.connection._basic_ack(self.channel_id,
