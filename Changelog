@@ -36,7 +36,7 @@
 
     - New download url: http://pypi.python.org/pypi/librabbitmq/
 
-    - New repository url:  http://github.com/ask/celery/librabbitmq/
+    - New repository url:  http://github.com/celery/librabbitmq/
 
 * No longer depends on rabbitmq-c as it is included and built with
   this distribution.
