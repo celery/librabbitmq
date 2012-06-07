@@ -5,6 +5,60 @@
 .. contents::
     :local:
 
+0.9.5
+=====
+:release-date: 2012-06-07 12:20 P.M BST
+
+* Now supports 'arguments' for:
+
+    - basic_consume
+    - exchange_declare
+    - queue_declare
+    - queue_bind
+    - queue_unbind
+
+* Release buffers after every command, so that memory
+  does not grow on operations like ``basic_cancel``.
+
+* Now uses buffer instead of PyString_Join.
+
+* basic_consume now returns consumer tag.
+
+* Now compiles with -Wall -ansi -pedantic.
+
+* The message callback is now called from the C stack,
+  so that drain_events does not return control back to the Python interpreter.
+
+  Calling the callback from the same stack as slurping the socket enables
+  us to pass the memory directly to the callback as a buffer object.
+
+* When receiving messages we now only allocate memory once for single frame
+  payloads.
+
+    For multiple frames we no longer create temporary PyString's,
+    but instead just memcpy the contents to a single string buffer.
+
+* Adds amqp methods:
+
+    - basic_cancel
+    - flow
+    - recover
+
+* Now using array.array to keep track of unused channel id's.
+
+* Internally the C Connection object now consistently have the channel
+  as the first argument for all channel related methods.
+
+* Fixed compiler warning in basic.qos
+
+* frame_max, channel_max and heartbeat values are now updated
+  to the values received from connection_tune_ok.
+
+* basic_recv now raises socket.timeout directly, so that don't
+  have to reraise.
+
+* Unicode support.
+
 0.9.3
 =====
 :release-date: 2012-05-22 06:40 P.M BST
