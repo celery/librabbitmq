@@ -5,6 +5,12 @@
 .. contents::
     :local:
 
+0.9.6
+=====
+:release-date: 2012-06-13 11:25 P.M BST
+
+* Fixes problem with basic_publish and kombu.
+
 0.9.5
 =====
 :release-date: 2012-06-07 12:20 P.M BST
