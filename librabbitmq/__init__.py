@@ -95,7 +95,7 @@ class Channel(object):
             body, properties = body.body, body.properties
         return self.connection._basic_publish(self.channel_id,
                 body, exchange, routing_key, properties,
-                mandatory, immediate)
+                mandatory or False, immediate or False)
 
     def queue_purge(self, queue, nowait=False):
         return self.connection._queue_purge(self.channel_id, queue, nowait)
