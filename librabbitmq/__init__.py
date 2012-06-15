@@ -9,14 +9,14 @@ __version__ = _librabbitmq.__version__
 __author__ = _librabbitmq.__author__
 __contact__ = _librabbitmq.__contact__
 __homepage__ = _librabbitmq.__homepage__
-__docformat__ = "restructuredtext"
+__docformat__ = 'restructuredtext'
 
 ConnectionError = _librabbitmq.ConnectionError
 ChannelError = _librabbitmq.ChannelError
 
 
-__version__ = "0.9.6"
-__all__ = ["Connection", "Message", "ConnectionError", "ChannelError"]
+__version__ = '0.9.6'
+__all__ = ['Connection', 'Message', 'ConnectionError', 'ChannelError']
 
 
 class Message(object):
@@ -28,10 +28,10 @@ class Message(object):
         self.body = body
 
     def ack(self):
-        return self.channel.basic_ack(self.delivery_info["delivery_tag"])
+        return self.channel.basic_ack(self.delivery_info['delivery_tag'])
 
     def reject(self):
-        return self.channel.basic_reject(self.delivery_info["delivery_tag"])
+        return self.channel.basic_reject(self.delivery_info['delivery_tag'])
 
 class Channel(object):
     Message = Message
@@ -53,15 +53,15 @@ class Channel(object):
     def recover(self, requeue=True):
         return self.connection._basic_recover(self.channel_id, requeue)
 
-    def basic_get(self, queue="", no_ack=False):
+    def basic_get(self, queue='', no_ack=False):
         frame = self.connection._basic_get(self.channel_id, queue, no_ack)
         if frame is not None:
             return(self.Message(self,
-                                frame["properties"],
-                                frame["delivery_info"],
-                                frame["body"]))
+                                frame['properties'],
+                                frame['delivery_info'],
+                                frame['body']))
 
-    def basic_consume(self, queue="", consumer_tag=None, no_local=False,
+    def basic_consume(self, queue='', consumer_tag=None, no_local=False,
             no_ack=False, exclusive=False, callback=None, arguments=None,
             nowait=False):
         if consumer_tag is None:
@@ -87,7 +87,7 @@ class Channel(object):
         self.connection.callbacks[self.channel_id].pop(consumer_tag, None)
         self.connection._basic_cancel(self.channel_id, consumer_tag)
 
-    def basic_publish(self, body, exchange="", routing_key="",
+    def basic_publish(self, body, exchange='', routing_key='',
             mandatory=False, immediate=False, **properties):
         if isinstance(body, tuple):
             body, properties = body
@@ -100,7 +100,7 @@ class Channel(object):
     def queue_purge(self, queue, nowait=False):
         return self.connection._queue_purge(self.channel_id, queue, nowait)
 
-    def exchange_declare(self, exchange="", type="direct",
+    def exchange_declare(self, exchange='', type='direct',
             passive=False, durable=False, auto_delete=False, arguments=None,
             nowait=False):
         """Declare exchange.
@@ -111,28 +111,28 @@ class Channel(object):
         return self.connection._exchange_declare(self.channel_id,
                 exchange, type, passive, durable, auto_delete, arguments or {})
 
-    def exchange_delete(self, exchange="", if_unused=False):
+    def exchange_delete(self, exchange='', if_unused=False):
         return self.connection._exchange_delete(self.channel_id,
                 exchange, if_unused)
 
-    def queue_declare(self, queue="", passive=False, durable=False,
+    def queue_declare(self, queue='', passive=False, durable=False,
             exclusive=False, auto_delete=False, arguments=None,
             nowait=False):
         return self.connection._queue_declare(self.channel_id,
                 queue, passive, durable, exclusive, auto_delete,
                 arguments or {})
 
-    def queue_bind(self, queue="", exchange="", routing_key="",
+    def queue_bind(self, queue='', exchange='', routing_key='',
             arguments=None, nowait=False):
         return self.connection._queue_bind(self.channel_id,
                 queue, exchange, routing_key, arguments or {})
 
-    def queue_unbind(self, queue="", exchange="", binding_key="",
+    def queue_unbind(self, queue='', exchange='', binding_key='',
             arguments=None, nowait=False):
         return self.connection._queue_unbind(self.channel_id,
                 queue, exchange, binding_key, arguments or {})
 
-    def queue_delete(self, queue="", if_unused=False, if_empty=False):
+    def queue_delete(self, queue='', if_unused=False, if_empty=False):
         return self.connection._queue_delete(self.channel_id,
                 queue, if_unused, if_empty)
 
@@ -151,8 +151,8 @@ class Connection(_librabbitmq.Connection):
     Message = Message
     Channel = Channel
 
-    def __init__(self, host="localhost", userid="guest", password="guest",
-            virtual_host="/", port=5672, channel_max=0xffff,
+    def __init__(self, host='localhost', userid='guest', password='guest',
+            virtual_host='/', port=5672, channel_max=0xffff,
             frame_max=131072, heartbeat=0, lazy=False, **kwargs):
         if ':' in host:
             host, port = host.split(':')
@@ -210,7 +210,7 @@ class Connection(_librabbitmq.Connection):
             return self._avail_channel_ids.pop()
         except IndexError:
             raise ConnectionError(
-                "No free channel ids, current=%d, channel_max=%d" % (
+                'No free channel ids, current=%d, channel_max=%d' % (
                     len(self.channels), self.channel_max))
 
     def close(self):
