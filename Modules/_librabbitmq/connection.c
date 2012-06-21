@@ -15,8 +15,12 @@
 PyMODINIT_FUNC init_librabbitmq(void);
 
 extern PyObject *PyRabbitMQ_socket_timeout;
-extern PyObject *PyRabbitMQExc_ConnectionError;
-extern PyObject *PyRabbitMQExc_ChannelError;
+
+/* Exceptions */
+PyObject *PyRabbitMQExc_ConnectionError;
+PyObject *PyRabbitMQExc_ChannelError;
+PyObject *PyRabbitMQ_socket_timeout;
+
 
 _PYRMQ_INLINE amqp_table_entry_t*
 AMQTable_AddEntry(amqp_table_t*, amqp_bytes_t);
@@ -59,6 +63,17 @@ int PyRabbitMQ_HandleError(int, char const *);
 _PYRMQ_INLINE int PyRabbitMQ_HandlePollError(int);
 int PyRabbitMQ_HandleAMQError(amqp_rpc_reply_t, PyObject *, const char *);
 void PyRabbitMQ_SetErr_UnexpectedHeader(amqp_frame_t*);
+int PyRabbitMQ_Not_Connected(PyRabbitMQ_Connection *);
+
+int PyRabbitMQ_Not_Connected(PyRabbitMQ_Connection *self)
+{
+    if (!self->connected) {
+        PyErr_SetString(PyRabbitMQExc_ConnectionError,
+            "Operation on closed connection");
+        return 1;
+    }
+    return 0;
+}
 
 /* ------: AMQP Utils :--------------------------------------------------- */
 
@@ -629,7 +644,7 @@ PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self)
 
     if (self->connected) {
         PyErr_SetString(PyRabbitMQExc_ConnectionError, "Already connected");
-        goto error;
+        goto bail;
     }
     Py_BEGIN_ALLOW_THREADS;
     self->conn = amqp_new_connection();
@@ -655,6 +670,8 @@ PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self)
     self->heartbeat = self->conn->heartbeat;
     Py_RETURN_NONE;
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 
 }
@@ -672,22 +689,12 @@ PyRabbitMQ_Connection_close(PyRabbitMQ_Connection *self)
 
         Py_BEGIN_ALLOW_THREADS
         reply = amqp_connection_close(self->conn, AMQP_REPLY_SUCCESS);
-        Py_END_ALLOW_THREADS
-        if (!PyRabbitMQ_HandleAMQError(reply,
-                PyRabbitMQExc_ConnectionError, "Couldn't close connection"))
-            goto error;
-
-        Py_BEGIN_ALLOW_THREADS
         amqp_destroy_connection(self->conn);
+        close(self->sockfd);
         Py_END_ALLOW_THREADS
-        if (!PyRabbitMQ_HandleError(close(self->sockfd),
-                                    "Couldn't close socket"))
-            goto error;
     }
 
     Py_RETURN_NONE;
-error:
-    return 0;
 }
 
 
@@ -700,14 +707,11 @@ PyRabbitMQ_Connection_channel_open(PyRabbitMQ_Connection *self, PyObject *args)
     unsigned int channel;
     amqp_rpc_reply_t reply;
 
-    if (!self->connected) {
-        PyErr_SetString(PyRabbitMQExc_ConnectionError,
-            "Open channel on closed connection.");
-        goto error;
-    }
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
 
     if (!PyArg_ParseTuple(args, "I", &channel))
-        goto error;
+        goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
     amqp_channel_open(self->conn, channel);
@@ -721,6 +725,8 @@ PyRabbitMQ_Connection_channel_open(PyRabbitMQ_Connection *self, PyObject *args)
     Py_RETURN_NONE;
 
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -735,11 +741,8 @@ PyRabbitMQ_Connection_channel_close(PyRabbitMQ_Connection *self,
     unsigned int channel = 0;
     amqp_rpc_reply_t reply;
 
-    if (!self->connected) {
-        PyErr_SetString(PyRabbitMQExc_ConnectionError,
-            "Can't close channel on closed connection.");
+    if (PyRabbitMQ_Not_Connected(self))
         goto error;
-    }
 
     if (!PyArg_ParseTuple(args, "I", &channel))
         goto error;
@@ -972,16 +975,19 @@ PyRabbitMQ_Connection_queue_bind(PyRabbitMQ_Connection *self,
     amqp_table_t bargs = AMQP_EMPTY_TABLE;
     amqp_rpc_reply_t reply;
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "IOOOO",
             &channel, &queue, &exchange, &routing_key, &arguments))
-        goto error;
-    if ((queue = Maybe_Unicode(queue)) == NULL) goto error;
-    if ((exchange = Maybe_Unicode(exchange)) == NULL) goto error;
-    if ((routing_key = Maybe_Unicode(routing_key)) == NULL) goto error;
+        goto bail;
+    if ((queue = Maybe_Unicode(queue)) == NULL) goto bail;
+    if ((exchange = Maybe_Unicode(exchange)) == NULL) goto bail;
+    if ((routing_key = Maybe_Unicode(routing_key)) == NULL) goto bail;
 
     bargs = PyDict_ToAMQTable(self->conn, arguments);
     if (PyErr_Occurred())
-        goto error;
+        goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
     amqp_queue_bind(self->conn, channel,
@@ -999,6 +1005,8 @@ PyRabbitMQ_Connection_queue_bind(PyRabbitMQ_Connection *self,
 
     Py_RETURN_NONE;
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -1019,15 +1027,18 @@ PyRabbitMQ_Connection_queue_unbind(PyRabbitMQ_Connection *self,
     amqp_table_t uargs = AMQP_EMPTY_TABLE;
     amqp_rpc_reply_t reply;
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "IOOOO",
             &channel, &queue, &exchange, &routing_key, &arguments))
-        goto error;
-    if ((queue = Maybe_Unicode(queue)) == NULL) goto error;
-    if ((exchange = Maybe_Unicode(exchange)) == NULL) goto error;
-    if ((routing_key = Maybe_Unicode(routing_key)) == NULL) goto error;
+        goto bail;
+    if ((queue = Maybe_Unicode(queue)) == NULL) goto bail;
+    if ((exchange = Maybe_Unicode(exchange)) == NULL) goto bail;
+    if ((routing_key = Maybe_Unicode(routing_key)) == NULL) goto bail;
     uargs = PyDict_ToAMQTable(self->conn, arguments);
     if (PyErr_Occurred())
-        goto error;
+        goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
     amqp_queue_unbind(self->conn, channel,
@@ -1045,6 +1056,8 @@ PyRabbitMQ_Connection_queue_unbind(PyRabbitMQ_Connection *self,
 
     Py_RETURN_NONE;
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -1063,10 +1076,13 @@ PyRabbitMQ_Connection_queue_delete(PyRabbitMQ_Connection *self,
     amqp_queue_delete_ok_t *ok;
     amqp_rpc_reply_t reply;
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "IOII",
             &channel, &queue, &if_unused, &if_empty))
-        goto error;
-    if ((queue = Maybe_Unicode(queue)) == NULL) goto error;
+        goto bail;
+    if ((queue = Maybe_Unicode(queue)) == NULL) goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
     ok = amqp_queue_delete(self->conn, channel,
@@ -1084,6 +1100,8 @@ PyRabbitMQ_Connection_queue_delete(PyRabbitMQ_Connection *self,
 
     return PyInt_FromLong((long)ok->message_count);
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -1108,14 +1126,17 @@ PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *self,
     amqp_table_t qargs = AMQP_EMPTY_TABLE;
     PyObject *ret = NULL;
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "IOIIIIO",
             &channel, &queue, &passive, &durable,
             &exclusive, &auto_delete, &arguments))
-        goto error;
-    if ((queue = Maybe_Unicode(queue)) == NULL) goto error;
+        goto bail;
+    if ((queue = Maybe_Unicode(queue)) == NULL) goto bail;
     qargs = PyDict_ToAMQTable(self->conn, arguments);
     if (PyErr_Occurred())
-        goto error;
+        goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
     ok = amqp_queue_declare(self->conn, channel,
@@ -1133,13 +1154,15 @@ PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *self,
             PyRabbitMQExc_ChannelError, "queue.declare"))
         goto error;
 
-    if ((ret = PyTuple_New(3)) == NULL) goto error;
+    if ((ret = PyTuple_New(3)) == NULL) goto bail;
     PyTuple_SET_ITEM(ret, 0, PyString_FromStringAndSize(ok->queue.bytes,
                                                         ok->queue.len));
     PyTuple_SET_ITEM(ret, 1, PyInt_FromLong((long)ok->message_count));
     PyTuple_SET_ITEM(ret, 2, PyInt_FromLong((long)ok->consumer_count));
     return ret;
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -1158,9 +1181,12 @@ PyRabbitMQ_Connection_queue_purge(PyRabbitMQ_Connection *self,
     amqp_queue_purge_ok_t *ok;
     amqp_rpc_reply_t reply;
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "IOI", &channel, &queue, &no_wait))
-        goto error;
-    if ((queue = Maybe_Unicode(queue)) == NULL) goto error;
+        goto bail;
+    if ((queue = Maybe_Unicode(queue)) == NULL) goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
     ok = amqp_queue_purge(self->conn, channel,
@@ -1175,6 +1201,8 @@ PyRabbitMQ_Connection_queue_purge(PyRabbitMQ_Connection *self,
 
     return PyInt_FromLong((long)ok->message_count);
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -1199,15 +1227,18 @@ PyRabbitMQ_Connection_exchange_declare(PyRabbitMQ_Connection *self,
     amqp_table_t eargs = AMQP_EMPTY_TABLE;
     amqp_rpc_reply_t reply;
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "IOOIIIO",
             &channel, &exchange, &type, &passive,
             &durable, &auto_delete, &arguments))
-        goto error;
-    if ((exchange = Maybe_Unicode(exchange)) == NULL) goto error;
-    if ((type = Maybe_Unicode(type)) == NULL) goto error;
+        goto bail;
+    if ((exchange = Maybe_Unicode(exchange)) == NULL) goto bail;
+    if ((type = Maybe_Unicode(type)) == NULL) goto bail;
     eargs = PyDict_ToAMQTable(self->conn, arguments);
     if (PyErr_Occurred())
-        goto error;
+        goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
     amqp_exchange_declare(self->conn, channel,
@@ -1225,6 +1256,8 @@ PyRabbitMQ_Connection_exchange_declare(PyRabbitMQ_Connection *self,
         goto error;
     Py_RETURN_NONE;
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -1241,9 +1274,12 @@ PyRabbitMQ_Connection_exchange_delete(PyRabbitMQ_Connection *self,
 
     amqp_rpc_reply_t reply;
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "IOI", &channel, &exchange, &if_unused))
-        goto error;
-    if ((exchange = Maybe_Unicode(exchange)) == NULL) goto error;
+        goto bail;
+    if ((exchange = Maybe_Unicode(exchange)) == NULL) goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
     amqp_exchange_delete(self->conn, channel,
@@ -1259,6 +1295,8 @@ PyRabbitMQ_Connection_exchange_delete(PyRabbitMQ_Connection *self,
 
     Py_RETURN_NONE;
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -1284,16 +1322,19 @@ PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
     amqp_bytes_t bytes;
     memset(&props, 0, sizeof(props));
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "It#OOO|II",
             &channel, &body_buf, &body_size, &exchange, &routing_key,
             &propdict, &mandatory, &immediate))
-        goto error;
-    if ((exchange = Maybe_Unicode(exchange)) == NULL) goto error;
-    if ((routing_key = Maybe_Unicode(routing_key)) == NULL) goto error;
+        goto bail;
+    if ((exchange = Maybe_Unicode(exchange)) == NULL) goto bail;
+    if ((routing_key = Maybe_Unicode(routing_key)) == NULL) goto bail;
 
     Py_INCREF(propdict);
     if (!PyDict_to_basic_properties(propdict, &props, self->conn))
-        goto error;
+        goto bail;
     Py_DECREF(propdict);
 
     bytes.len = (size_t)body_size;
@@ -1314,6 +1355,8 @@ PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
     Py_RETURN_NONE;
 
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -1330,8 +1373,11 @@ PyRabbitMQ_Connection_basic_ack(PyRabbitMQ_Connection *self,
     unsigned int multiple = 0;
     int ret = 0;
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "InI", &channel, &delivery_tag, &multiple))
-        goto error;
+        goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
     ret = amqp_basic_ack(self->conn, channel,
@@ -1344,6 +1390,8 @@ PyRabbitMQ_Connection_basic_ack(PyRabbitMQ_Connection *self,
 
     Py_RETURN_NONE;
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -1359,8 +1407,11 @@ static PyObject *PyRabbitMQ_Connection_basic_reject(PyRabbitMQ_Connection *self,
 
     int ret = 0;
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "InI", &channel, &delivery_tag, &multiple))
-        goto error;
+        goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
     ret = amqp_basic_reject(self->conn, channel,
@@ -1373,6 +1424,8 @@ static PyObject *PyRabbitMQ_Connection_basic_reject(PyRabbitMQ_Connection *self,
 
     Py_RETURN_NONE;
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -1390,9 +1443,12 @@ PyRabbitMQ_Connection_basic_cancel(PyRabbitMQ_Connection *self,
     amqp_basic_cancel_ok_t *ok;
     amqp_rpc_reply_t reply;
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "IO", &channel, &consumer_tag))
-        goto error;
-    if ((consumer_tag = Maybe_Unicode(consumer_tag)) == NULL) goto error;
+        goto bail;
+    if ((consumer_tag = Maybe_Unicode(consumer_tag)) == NULL) goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
     ok = amqp_basic_cancel(self->conn, channel,
@@ -1407,6 +1463,8 @@ PyRabbitMQ_Connection_basic_cancel(PyRabbitMQ_Connection *self,
 
     Py_RETURN_NONE;
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -1430,15 +1488,18 @@ PyRabbitMQ_Connection_basic_consume(PyRabbitMQ_Connection *self,
     amqp_rpc_reply_t reply;
     amqp_table_t cargs = AMQP_EMPTY_TABLE;
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "IOOIIIO",
             &channel, &queue, &consumer_tag, &no_local,
             &no_ack, &exclusive, &arguments))
-        goto error;
-    if ((queue = Maybe_Unicode(queue)) == NULL) goto error;
-    if ((consumer_tag = Maybe_Unicode(consumer_tag)) == NULL) goto error;
+        goto bail;
+    if ((queue = Maybe_Unicode(queue)) == NULL) goto bail;
+    if ((consumer_tag = Maybe_Unicode(consumer_tag)) == NULL) goto bail;
 
     cargs = PyDict_ToAMQTable(self->conn, arguments);
-    if (PyErr_Occurred()) goto error;
+    if (PyErr_Occurred()) goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
     ok = amqp_basic_consume(self->conn, channel,
@@ -1457,6 +1518,8 @@ PyRabbitMQ_Connection_basic_consume(PyRabbitMQ_Connection *self,
 
     return PySTRING_FROM_AMQBYTES(ok->consumer_tag);
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -1471,6 +1534,9 @@ PyRabbitMQ_Connection_basic_qos(PyRabbitMQ_Connection *self,
     PY_SIZE_TYPE prefetch_size = 0;
     unsigned int prefetch_count = 0;
     unsigned int _global = 0;
+
+    if (PyRabbitMQ_Not_Connected(self))
+        goto error;
 
     if (!PyArg_ParseTuple(args, "InII",
             &channel, &prefetch_size, &prefetch_count, &_global))
@@ -1501,8 +1567,11 @@ PyRabbitMQ_Connection_flow(PyRabbitMQ_Connection *self,
     amqp_channel_flow_ok_t *ok;
     amqp_rpc_reply_t reply;
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "II", &channel, &active))
-        goto error;
+        goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
     ok = amqp_channel_flow(self->conn, channel, (amqp_boolean_t)active);
@@ -1516,6 +1585,8 @@ PyRabbitMQ_Connection_flow(PyRabbitMQ_Connection *self,
 
     Py_RETURN_NONE;
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -1532,8 +1603,11 @@ PyRabbitMQ_Connection_basic_recover(PyRabbitMQ_Connection *self,
     amqp_basic_recover_ok_t *ok;
     amqp_rpc_reply_t reply;
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "II", &channel, &requeue))
-        goto error;
+        goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
     ok = amqp_basic_recover(self->conn, channel, (amqp_boolean_t)requeue);
@@ -1547,6 +1621,8 @@ PyRabbitMQ_Connection_basic_recover(PyRabbitMQ_Connection *self,
 
     Py_RETURN_NONE;
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -1561,15 +1637,18 @@ PyRabbitMQ_Connection_basic_recv(PyRabbitMQ_Connection *self,
     int ready = 0;
     double timeout;
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "d", &timeout))
-        goto error;
+        goto bail;
 
     if (PYRMQ_SHOULD_POLL(timeout) && !AMQP_ACTIVE_BUFFERS(self->conn)) {
         Py_BEGIN_ALLOW_THREADS;
         ready = RabbitMQ_WAIT(self->sockfd, timeout);
         Py_END_ALLOW_THREADS;
         if (PyRabbitMQ_HandlePollError(ready) <= 0)
-            goto error;
+            goto bail;
     }
 
     if (PyRabbitMQ_recv(self, NULL, self->conn, 0) < 0) {
@@ -1580,6 +1659,8 @@ PyRabbitMQ_Connection_basic_recv(PyRabbitMQ_Connection *self,
 
     Py_RETURN_NONE;
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 }
 
@@ -1609,9 +1690,12 @@ PyRabbitMQ_Connection_basic_get(PyRabbitMQ_Connection *self,
     PyObject *p = NULL;
     PyObject *delivery_info = NULL;
 
+    if (PyRabbitMQ_Not_Connected(self))
+        goto bail;
+
     if (!PyArg_ParseTuple(args, "IOI", &channel, &queue, &no_ack))
-        goto error;
-    if ((queue = Maybe_Unicode(queue)) == NULL) goto error;
+        goto bail;
+    if ((queue = Maybe_Unicode(queue)) == NULL) goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
     reply = amqp_basic_get(self->conn, channel,
@@ -1649,6 +1733,8 @@ PyRabbitMQ_Connection_basic_get(PyRabbitMQ_Connection *self,
     return p;
 
 error:
+    PyRabbitMQ_Connection_close(self);
+bail:
     return 0;
 empty:
     Py_RETURN_NONE;
@@ -1657,16 +1743,9 @@ empty:
 
 /* Module: _librabbitmq */
 
-/* Exceptions */
-PyObject *PyRabbitMQExc_ConnectionError;
-PyObject *PyRabbitMQExc_ChannelError;
-
-PyObject *PyRabbitMQ_socket_timeout;
-
 static PyMethodDef PyRabbitMQ_functions[] = {
     {NULL, NULL, 0, NULL}
 };
-
 
 PyMODINIT_FUNC init_librabbitmq(void)
 {
