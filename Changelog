@@ -5,17 +5,30 @@
 .. contents::
     :local:
 
+0.9.7
+=====
+:release-date: 2012-07-23 02:30 P.M BST
+
+- Connection and channel errors now close the connection,
+  so that connection/channel cannot be used.
+
+    Before an operation on a connection/channel that previously raised
+    an exception would just hang.
+
+    In the future it may be possible to have channel errors only close
+    the channel, but this keeps it simple for now (and it works like amqplib).
+
 0.9.6
 =====
 :release-date: 2012-06-13 11:25 P.M BST
 
-* Fixes problem with basic_publish and kombu.
+- Fixes problem with basic_publish and kombu.
 
 0.9.5
 =====
 :release-date: 2012-06-07 12:20 P.M BST
 
-* Now supports 'arguments' for:
+- Now supports 'arguments' for:
 
     - basic_consume
     - exchange_declare
@@ -23,141 +36,141 @@
     - queue_bind
     - queue_unbind
 
-* Release buffers after every command, so that memory
+- Release buffers after every command, so that memory
   does not grow on operations like ``basic_cancel``.
 
-* Now uses buffer instead of PyString_Join.
+- Now uses buffer instead of PyString_Join.
 
-* basic_consume now returns consumer tag.
+- basic_consume now returns consumer tag.
 
-* Now compiles with -Wall -ansi -pedantic.
+- Now compiles with -Wall -ansi -pedantic.
 
-* The message callback is now called from the C stack,
+- The message callback is now called from the C stack,
   so that drain_events does not return control back to the Python interpreter.
 
   Calling the callback from the same stack as slurping the socket enables
   us to pass the memory directly to the callback as a buffer object.
 
-* When receiving messages we now only allocate memory once for single frame
+- When receiving messages we now only allocate memory once for single frame
   payloads.
 
     For multiple frames we no longer create temporary PyString's,
     but instead just memcpy the contents to a single string buffer.
 
-* Adds amqp methods:
+- Adds amqp methods:
 
     - basic_cancel
     - flow
     - recover
 
-* Now using array.array to keep track of unused channel id's.
+- Now using array.array to keep track of unused channel id's.
 
-* Internally the C Connection object now consistently have the channel
+- Internally the C Connection object now consistently have the channel
   as the first argument for all channel related methods.
 
-* Fixed compiler warning in basic.qos
+- Fixed compiler warning in basic.qos
 
-* frame_max, channel_max and heartbeat values are now updated
+- frame_max, channel_max and heartbeat values are now updated
   to the values received from connection_tune_ok.
 
-* basic_recv now raises socket.timeout directly, so that don't
+- basic_recv now raises socket.timeout directly, so that don't
   have to reraise.
 
-* Unicode support.
+- Unicode support.
 
 0.9.3
 =====
 :release-date: 2012-05-22 06:40 P.M BST
 
-* Patches memory leak.
+- Patches memory leak.
 
-* Use ``_PyString_Join`` to concat body parts.
+- Use ``_PyString_Join`` to concat body parts.
 
 0.9.2
 =====
 :release-date: 2012-05-21 09:00 P.M BST
 :by: Ask Solem
 
-* Fixes installation problem.
+- Fixes installation problem.
 
 0.9.1
 =====
 :release-date: 2012-05-21 08:00 P.M BST
 :by: Ask Solem
 
-* Fixes installation problem.
+- Fixes installation problem.
 
 0.9.0
 =====
 :release-date: 2012-05-21 05:30 P.M BST
 :by: Ask Solem
 
-* This project has been renamed to **librabbitmq**
+- This project has been renamed to **librabbitmq**
 
     - New download url: http://pypi.python.org/pypi/librabbitmq/
 
     - New repository url:  http://github.com/celery/librabbitmq/
 
-* No longer depends on rabbitmq-c as it is included and built with
+- No longer depends on rabbitmq-c as it is included and built with
   this distribution.
 
-* Now supports non-blocking I/O:
+- Now supports non-blocking I/O:
 
     - New method: ``Connection.fileno()``
 
     - drain_events(timeout=0.0) is now non-blocking.
 
-* Fixed typo noack -> no_ack
+- Fixed typo noack -> no_ack
 
-* Do not select connection if frames are already enqueued.
+- Do not select connection if frames are already enqueued.
 
-* Now supports queue_delete and exchange_delete.
+- Now supports queue_delete and exchange_delete.
 
 0.5.0
 =====
 :release-date: 2011-12-07 05:00 P.M GMT
 :by: Ask Solem
 
-* Adds header support.
+- Adds header support.
 
     Application headers can be added to ``properties["headers"]``.
 
-    * Sending messages:
+    - Sending messages:
 
-        * Supported
-            * int
-            * str  (not Unicode).
+        - Supported
+            - int
+            - str  (not Unicode).
 
-        * Unsupported
-            * everything else. (see read).
+        - Unsupported
+            - everything else. (see read).
 
-    * Receiving messages:
+    - Receiving messages:
 
-        * Supported
-            * boolean: bool
-            * signed int: i8, i16, i32, i64
-            * unsigned int: u8, u16, u32, u64
-            * float: f32
-            * double: f64
-            * string: bytes
+        - Supported
+            - boolean: bool
+            - signed int: i8, i16, i32, i64
+            - unsigned int: u8, u16, u32, u64
+            - float: f32
+            - double: f64
+            - string: bytes
 
-        * Unsupported
-            * array
-            * timestamp
-            * table
-            * void
-            * decimal
+        - Unsupported
+            - array
+            - timestamp
+            - table
+            - void
+            - decimal
 
 0.4.1
 =====
 :release-date: 2011-09-27 14:00 P.M BST
 :by: Ask Solem
 
-* The GIL was not released while waiting for events.
+- The GIL was not released while waiting for events.
 
    Fix contributed by Andrew Snowden.
 
-* ``drain_events`` would wait for socket events, even though
+- ``drain_events`` would wait for socket events, even though
   data was already buffered in client.
 
    Fix contributed by Andrew Snowden.
@@ -167,7 +180,7 @@
 =====
 :release-date: 2011-09-02 18:00 P.M BST
 
-* Adds timeout support to `drain_events`.
+- Adds timeout support to `drain_events`.
 
   Timeout in seconds as a float, or :const:`None` for no timeout.
 
@@ -175,11 +188,11 @@
 =====
 :release-date: 2011-07-28 04:00 P.M BST
 
-* Adds support for ``basic_reject``, and ``basic_qos`` (Issue #1).
+- Adds support for ``basic_reject``, and ``basic_qos`` (Issue #1).
 
 0.0.1
 =====
 :release-date: NOT RELEASED
 :branch: master
 
-* Initial release
+- Initial release
