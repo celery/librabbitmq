@@ -6,7 +6,6 @@ from setuptools import setup, find_packages
 
 # --with-librabbitmq=<dir>: path to librabbitmq package if needed
 
-
 LRMQDIST = lambda *x: os.path.join("clib", *x)
 LRMQSRC = lambda *x: LRMQDIST("librabbitmq", *x)
 SPECPATH = lambda *x: os.path.join("rabbitmq-codegen", *x)
