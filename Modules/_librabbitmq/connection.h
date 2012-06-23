@@ -36,7 +36,13 @@
 #endif
 
 #ifndef _PYRMQ_INLINE
-# if defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__)
+# if defined(__llvm__)
+/* extern inline breaks on LLVM saying 'symbol not found'
+ *  but the inline keyword is only treated as a "mild hint"
+ *   to the LLVM optimizer anyway, so we'll just disable it.
+ */
+#  define _PYRMQ_INLINE
+# elif defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__)
 #  define _PYRMQ_INLINE extern __inline
 # else
 #  define _PYRMQ_INLINE __inline
@@ -213,62 +219,6 @@ PyRabbitMQ_Connection_basic_cancel(PyRabbitMQ_Connection *, PyObject *);
 
 static PyObject
 *PyRabbitMQ_Connection_flow(PyRabbitMQ_Connection *, PyObject *);
-
-
-/* ------: Private Prototypes :------------------------------------------- */
-/* llvm apparently doesn't like them being in the .c file. */
-PyMODINIT_FUNC init_librabbitmq(void);
-
-extern PyObject *PyRabbitMQ_socket_timeout;
-
-/* Exceptions */
-PyObject *PyRabbitMQExc_ConnectionError;
-PyObject *PyRabbitMQExc_ChannelError;
-PyObject *PyRabbitMQ_socket_timeout;
-
-
-_PYRMQ_INLINE amqp_table_entry_t*
-AMQTable_AddEntry(amqp_table_t*, amqp_bytes_t);
-
-_PYRMQ_INLINE void
-AMQTable_SetStringValue(amqp_table_t*, amqp_bytes_t, amqp_bytes_t);
-
-_PYRMQ_INLINE void
-AMQTable_SetIntValue(amqp_table_t *, amqp_bytes_t, int);
-
-_PYRMQ_INLINE amqp_table_t
-PyDict_ToAMQTable(amqp_connection_state_t, PyObject *);
-
-_PYRMQ_INLINE int64_t RabbitMQ_now_usec(void);
-_PYRMQ_INLINE int RabbitMQ_wait_nb(int);
-_PYRMQ_INLINE int RabbitMQ_wait_timeout(int, double);
-
-_PYRMQ_INLINE void
-basic_properties_to_PyDict(amqp_basic_properties_t*, PyObject*);
-
-_PYRMQ_INLINE int
-PyDict_to_basic_properties(PyObject *,
-                           amqp_basic_properties_t *,
-                           amqp_connection_state_t );
-
-_PYRMQ_INLINE void
-amqp_basic_deliver_to_PyDict(PyObject *, uint64_t, amqp_bytes_t,
-                             amqp_bytes_t, amqp_boolean_t);
-
-_PYRMQ_INLINE int
-PyRabbitMQ_ApplyCallback(PyRabbitMQ_Connection *,
-                         PyObject *, PyObject *, PyObject *,
-                         PyObject *, PyObject *);
-
-int
-PyRabbitMQ_recv(PyRabbitMQ_Connection *, PyObject *,
-                amqp_connection_state_t, int);
-
-int PyRabbitMQ_HandleError(int, char const *);
-_PYRMQ_INLINE int PyRabbitMQ_HandlePollError(int);
-int PyRabbitMQ_HandleAMQError(amqp_rpc_reply_t, PyObject *, const char *);
-void PyRabbitMQ_SetErr_UnexpectedHeader(amqp_frame_t*);
-int PyRabbitMQ_Not_Connected(PyRabbitMQ_Connection *);
 
 
 /* Connection attributes */
