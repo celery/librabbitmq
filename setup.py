@@ -130,7 +130,8 @@ def create_builder():
                     os.chdir(LRMQDIST())
                     if not os.path.isfile("config.h"):
                         print("- configure rabbitmq-c...")
-                        os.system("/bin/sh configure --disable-dependency-tracking")
+                        os.system("/bin/sh configure --disable-tools \
+                                   --disable-docs --disable-dependency-tracking")
                     #print("- make rabbitmq-c...")
                     #os.chdir(LRMQSRC())
                     #os.system('"%s" all' % find_make())

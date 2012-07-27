@@ -1,6 +1,7 @@
 RABBIT_DIR=rabbitmq-c
+CODEGEN_DIR=rabbitmq-codegen
 RABBIT_TARGET=clib
-RABBIT_DIST=librabbitmq-0.0.1
+RABBIT_DIST=librabbitmq-0.2.0
 
 
 all: build
@@ -12,6 +13,7 @@ add-submodules:
 submodules:
 	git submodule init
 	git submodule update
+	(cd $(RABBIT_DIR); ln -sf ../$(CODEGEN_DIR) codegen)
 
 rabbitmq-c: submodules
 	(cd $(RABBIT_DIR); test -f configure || autoreconf -i)
@@ -51,7 +53,7 @@ distclean: pyclean rabbitmq-distclean
 	-rm -f erl_crash.dump
 
 $(RABBIT_TARGET):
-	(test -f config.h || cd $(RABBIT_DIR); ./configure)
+	(test -f config.h || cd $(RABBIT_DIR); ./configure --disable-tools --disable-docs)
 	(cd $(RABBIT_DIR); make distdir)
 	mv "$(RABBIT_DIR)/$(RABBIT_DIST)" "$(RABBIT_TARGET)"
 
