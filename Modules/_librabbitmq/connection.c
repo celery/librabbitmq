@@ -1446,7 +1446,7 @@ PyRabbitMQ_Connection_basic_cancel(PyRabbitMQ_Connection *self,
     amqp_rpc_reply_t reply;
 
     if (PyRabbitMQ_Not_Connected(self))
-        goto bail;
+        goto ok;
 
     if (!PyArg_ParseTuple(args, "IO", &channel, &consumer_tag))
         goto bail;
@@ -1463,6 +1463,7 @@ PyRabbitMQ_Connection_basic_cancel(PyRabbitMQ_Connection *self,
             PyRabbitMQExc_ChannelError, "basic.cancel"))
         goto error;
 
+ok:
     Py_RETURN_NONE;
 error:
     PyRabbitMQ_Connection_close(self);
