@@ -13,7 +13,7 @@ add-submodules:
 submodules:
 	git submodule init
 	git submodule update
-	(cd $(RABBIT_DIR); ln -sf ../$(CODEGEN_DIR) codegen)
+	(cd $(RABBIT_DIR); rm -rf codegen; ln -sf ../$(CODEGEN_DIR) ./codegen)
 
 rabbitmq-c: submodules
 	(cd $(RABBIT_DIR); test -f configure || autoreconf -i)
