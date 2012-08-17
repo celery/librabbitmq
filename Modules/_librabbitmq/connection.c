@@ -491,7 +491,7 @@ int PyRabbitMQ_HandleAMQError(amqp_rpc_reply_t reply,
             snprintf(errorstr, sizeof(errorstr), "%s: %s",
                     context,
                     reply.library_error
-                        ? strerror(reply.library_error)
+                        ? amqp_error_string(reply.library_error)
                         : "(end-of-stream)");
             break;
 
