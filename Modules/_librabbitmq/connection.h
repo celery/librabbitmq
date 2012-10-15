@@ -49,6 +49,12 @@
 # endif
 #endif
 
+#define PyDICT_SETNONE_DECREF(dict, key)                            \
+    do {                                                            \
+        PyDict_SetItem(dict, key, Py_None);                         \
+        Py_XDECREF(key);                                            \
+    } while(0)
+
 #define PyDICT_SETSTR_DECREF(dict, key, value)                      \
     do {                                                            \
         PyDict_SetItemString(dict, key, value);                     \
@@ -66,7 +72,7 @@
         PyString_FromStringAndSize(member.bytes, member.len);       \
 
 #define AMQTable_TO_PYKEY(table, i)                                 \
-        PySTRING_FROM_AMQBYTES(table->headers.entries[i].key)
+        PySTRING_FROM_AMQBYTES(table->entries[i].key)
 
 #define PyDICT_SETKEY_AMQTABLE(dict, k, v, table, stmt)             \
         PyDICT_SETSTRKEY_DECREF(dict, k, v,                         \
@@ -108,8 +114,11 @@ Maybe_Unicode(PyObject *s)
             ? RabbitMQ_wait_timeout(sockfd, timeout)                \
             : RabbitMQ_wait_nb(sockfd))
 
-#define AMQTable_HVAL(table, index, typ)                            \
-    table->headers.entries[index].value.value.typ
+#define AMQTable_VAL(table, index, typ)                             \
+    table->entries[index].value.value.typ
+
+#define AMQArray_VAL(array, index, typ)                             \
+    array->entries[index].value.typ
 
 #define AMQP_ACTIVE_BUFFERS(state)                                  \
     (amqp_data_in_buffer(state) || amqp_frames_enqueued(state))
