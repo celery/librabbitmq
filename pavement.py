@@ -105,6 +105,11 @@ def test(options):
 
 
 @task
+def funtest(options):
+    sh('make install && (cd funtests; python setup.py test)')
+
+
+@task
 @cmdopts([
     ("noerror", "E", "Ignore errors"),
 ])

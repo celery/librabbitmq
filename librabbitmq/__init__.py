@@ -33,6 +33,7 @@ class Message(object):
     def reject(self):
         return self.channel.basic_reject(self.delivery_info['delivery_tag'])
 
+
 class Channel(object):
     Message = Message
     is_open = False
@@ -42,6 +43,12 @@ class Channel(object):
         self.channel_id = channel_id
         self.next_consumer_tag = itertools.count(1).next
         self.no_ack_consumers = set()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.close()
 
     def basic_qos(self, prefetch_size=0, prefetch_count=0, _global=False):
         return self.connection._basic_qos(self.channel_id,
@@ -168,6 +175,12 @@ class Connection(_librabbitmq.Connection):
         self._avail_channel_ids = array('H', xrange(self.channel_max, 0, -1))
         if not lazy:
             self.connect()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.close()
 
     def reconnect(self):
         self.close()
