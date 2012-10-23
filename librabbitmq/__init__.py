@@ -132,7 +132,9 @@ class Channel(object):
         return self.connection._queue_unbind(self.channel_id,
                 queue, exchange, binding_key, arguments or {})
 
-    def queue_delete(self, queue='', if_unused=False, if_empty=False):
+    def queue_delete(self, queue='', if_unused=False, if_empty=False,
+            nowait=False):
+        """nowait argument is not supported."""
         return self.connection._queue_delete(self.channel_id,
                 queue, if_unused, if_empty)
 
