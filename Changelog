@@ -7,6 +7,29 @@
 .. contents::
     :local:
 
+.. _version-1.0.0:
+
+1.0.0
+=====
+:release-date: 2012-11-02 5:00 P.M UTC
+
+- A channel exception will now cause the channel to be revived instead of
+  simply closing the connection.
+
+- Support for lists and dictionaries in header values.
+
+    This also means that the RabbitMQ `Bcc` and `CC` header extensions now can
+    be constructured.
+
+    Contributed by C Anthony Risinger.
+
+- Support for float/double in header values.
+
+- Adds dummy ``nowait`` argument to ``queue_delete`` for amqplib API
+  compatibility (it has no effect).
+
+- Library errors now use the correct error strings (Issue #7).
+
 .. _version-0.9.9:
 
 0.9.9
