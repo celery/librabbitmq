@@ -31,6 +31,9 @@ AMQTable_SetStringValue(amqp_table_t*, amqp_bytes_t, amqp_bytes_t);
 _PYRMQ_INLINE void
 AMQTable_SetIntValue(amqp_table_t *, amqp_bytes_t, int);
 
+_PYRMQ_INLINE void
+AMQTable_SetDoubleValue(amqp_table_t *, amqp_bytes_t, double);
+
 _PYRMQ_INLINE amqp_table_t
 PyDict_ToAMQTable(amqp_connection_state_t, PyObject *);
 
@@ -106,6 +109,15 @@ AMQTable_SetIntValue(amqp_table_t *table,
     entry->value.value.i32 = value;
 }
 
+_PYRMQ_INLINE void
+AMQTable_SetDoubleValue(amqp_table_t *table,
+                        amqp_bytes_t key, double value)
+{
+    amqp_table_entry_t *entry = AMQTable_AddEntry(table, key);
+    entry->value.kind = AMQP_FIELD_KIND_F64;
+    entry->value.value.f64 = value;
+}
+
 _PYRMQ_INLINE amqp_table_t
 PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src)
 {
@@ -114,6 +126,7 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src)
     PY_SIZE_TYPE size = 0;
     PY_SIZE_TYPE pos = 0;
     uint64_t clong_value = 0;
+    double cdouble_value = 0.0;
     int is_unicode = 0;
     amqp_table_t dst = AMQP_EMPTY_TABLE;
 
@@ -128,8 +141,12 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src)
         /* Int | Long */
         if (PyLong_Check(dvalue) || PyInt_Check(dvalue)) {
             clong_value = (int64_t)PyLong_AsLong(dvalue);
+            if (PyErr_Occurred())
+                goto error;
             AMQTable_SetIntValue(&dst,
-                    PyString_AS_AMQBYTES(dkey), clong_value);
+                    PyString_AS_AMQBYTES(dkey),
+                    clong_value
+            );
         }
         else {
             /* String | Unicode */
@@ -141,14 +158,27 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src)
                 }
                 AMQTable_SetStringValue(&dst,
                         PyString_AS_AMQBYTES(dkey),
-                        PyString_AS_AMQBYTES(dvalue));
+                        PyString_AS_AMQBYTES(dvalue)
+                );
             }
             else {
-                /* unsupported type */
-                PyErr_Format(PyExc_ValueError,
-                    "Table member %s is of an unsupported type",
-                    PyString_AS_STRING(dkey));
-                goto error;
+                cdouble_value = PyFloat_AsDouble(dvalue);
+                if (PyErr_Occurred())
+                    goto error;
+                if (PyFloat_Check(dvalue)) {
+
+                    AMQTable_SetDoubleValue(&dst,
+                        PyString_AS_AMQBYTES(dkey),
+                        cdouble_value
+                    );
+                }
+                else {
+                    /* unsupported type */
+                    PyErr_Format(PyExc_ValueError,
+                        "Table member %s is of an unsupported type",
+                        PyString_AS_STRING(dkey));
+                    goto error;
+            }
             }
         }
     }
