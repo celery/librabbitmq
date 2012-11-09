@@ -171,7 +171,7 @@ homepage = distmeta[3].strip()
 ext_modules = []
 cmdclass = {}
 packages = []
-install_requires = []
+install_requires = ['amqp>=1.2.0']
 goahead = False
 is_jython = sys.platform.startswith('java')
 is_pypy = hasattr(sys, 'pypy_version_info')
@@ -192,7 +192,6 @@ elif find_make():
         packages = find_packages(exclude=['ez_setup', 'tests', 'tests.*'])
 
 if not goahead:
-    install_requires = ['amqplib>=1.0.2']
     ext_modules = []
     cmdclass = {}
     packages = []
