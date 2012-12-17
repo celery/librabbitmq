@@ -63,7 +63,7 @@ Using with Kombu::
 
 Stand-alone::
 
-    >>> from librabbitmq import Connection, Message
+    >>> from librabbitmq import Connection
 
     >>> conn = Connection(host="localhost", userid="guest",
     ...                   password="guest", virtual_host="/")
@@ -78,9 +78,7 @@ Producing
 
 ::
 
-    >>> m = Message(body, content_type=None, content_encoding=None,
-    ...             delivery_mode=1)
-    >>> channel.basic_publish(m, exchange, routing_key, ...)
+    >>> channel.basic_publish(body, exchange, routing_key, ...)
 
 Consuming
 ---------
