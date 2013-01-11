@@ -462,8 +462,8 @@ basic_properties_to_PyDict(amqp_basic_properties_t *props, PyObject *p)
         PyDICT_SETSTR_DECREF(p, "timestamp", value);
     }
     if (props->_flags & AMQP_BASIC_HEADERS_FLAG) {
-        PyDICT_SETSTR_DECREF(p, "headers",
-            AMQTable_toPyDict(&(props->headers)));
+        value = AMQTable_toPyDict(&(props->headers));
+        PyDICT_SETSTR_DECREF(p, "headers", value);
     }
 }
 
