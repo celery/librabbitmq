@@ -134,10 +134,10 @@ class Channel(object):
         return self.connection._queue_bind(self.channel_id,
                 queue, exchange, routing_key, arguments or {})
 
-    def queue_unbind(self, queue='', exchange='', binding_key='',
+    def queue_unbind(self, queue='', exchange='', routing_key='',
             arguments=None, nowait=False):
         return self.connection._queue_unbind(self.channel_id,
-                queue, exchange, binding_key, arguments or {})
+                queue, exchange, routing_key, arguments or {})
 
     def queue_delete(self, queue='', if_unused=False, if_empty=False,
             nowait=False):
