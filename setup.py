@@ -112,7 +112,7 @@ def create_builder():
 
     class build(_build):
         stdcflags = [
-            '-W -Wall -ansi -DHAVE_CONFIG_H',
+            '-W -Wall -DHAVE_CONFIG_H',
         ]
         if os.environ.get('PEDANTIC'):
             # Python.h breaks -pedantic, so can only use it while developing.
