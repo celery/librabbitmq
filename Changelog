@@ -7,6 +7,24 @@
 .. contents::
     :local:
 
+.. _version-1.0.1:
+
+- ``queue_unbind`` argument ``binding_key`` renamed to ``routing_key``
+  (Issue #16).
+
+    This change ensures compatibility with :mod:`amqp`.
+
+- Fixed memory leak caused by double call to ``AMQPTable_toPyDict``
+  (Issue #15).
+
+    Fix contributed by Eric Siegel.
+
+- Fixed several potential memory leaks (Issue #15).
+
+    Fix contributed by Marcus Cobden.
+
+- Removed `-ansi` compile option (Issue #17).
+
 .. _version-1.0.0:
 
 1.0.0
