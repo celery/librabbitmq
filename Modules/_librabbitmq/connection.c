@@ -1081,6 +1081,7 @@ PyRabbitMQ_ApplyCallback(PyRabbitMQ_Connection *self,
     PyObject *Message = NULL;
     PyObject *message = NULL;
     PyObject *args = NULL;
+    PyObject *callback_result = NULL;
 
     /* self.callbacks */
     if (!(channel_callbacks = PyDict_GetItem(self->callbacks, channel)))
@@ -1109,8 +1110,11 @@ PyRabbitMQ_ApplyCallback(PyRabbitMQ_Connection *self,
     Py_INCREF(message);
     if ((args = PyTuple_New(1)) == NULL) goto finally;
     PyTuple_SET_ITEM(args, 0, message);
-    PyObject_CallObject(callback_for_tag, args);
+
+    callback_result = PyObject_CallObject(callback_for_tag, args);
+    Py_XDECREF(callback_result);
     Py_DECREF(message);
+
     goto finally;
 error:
     retval = -1;
