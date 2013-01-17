@@ -1,7 +1,6 @@
 import os
 import platform
 import sys
-from glob import glob
 from setuptools import setup, find_packages
 
 # --with-librabbitmq=<dir>: path to librabbitmq package if needed
@@ -11,6 +10,11 @@ LRMQSRC = lambda *x: LRMQDIST('librabbitmq', *x)
 SPECPATH = lambda *x: os.path.join('rabbitmq-codegen', *x)
 PYCP = lambda *x: os.path.join('Modules', '_librabbitmq', *x)
 
+CMD_CONFIGURE = """\
+/bin/sh configure --disable-tools \
+                  --disable-docs  \
+                  --disable-dependency-tracking \
+"""
 
 
 def senv(*k__v, **kwargs):
@@ -40,13 +44,12 @@ def codegen():
         os.environ.update(restore)
 
 
-
 def create_builder():
     from setuptools import Extension
     from distutils.command.build import build as _build
     cmd = None
     pkgdirs = []  # incdirs and libdirs get these
-    libs = []#'rabbitmq']
+    libs = []
     defs = []
     incdirs = []
     libdirs = []
@@ -92,13 +95,15 @@ def create_builder():
         incdirs.append(LRMQSRC('unix'))
         librabbit_files.append(LRMQSRC('unix', 'socket.c'))
 
-    librabbitmq_ext = Extension('_librabbitmq',
-                            sources=PyC_files + librabbit_files,
-                            libraries=libs, include_dirs=incdirs,
-                            library_dirs=libdirs, define_macros=defs)
-                            #depends=(glob(PYCP('*.h')) + ['setup.py']))
+    librabbitmq_ext = Extension(
+        '_librabbitmq',
+        sources=PyC_files + librabbit_files,
+        libraries=libs, include_dirs=incdirs,
+        library_dirs=libdirs, define_macros=defs,
+    )
 
-    # Hidden secret: if environment variable GEN_SETUP is set, generate Setup file.
+    # Hidden secret: if environment variable GEN_SETUP is set
+    # then generate Setup file.
     if cmd == 'gen-setup':
         line = ' '.join((
             librabbitmq_ext.name,
@@ -120,18 +125,18 @@ def create_builder():
 
         def run(self):
             here = os.path.abspath(os.getcwd())
-            H = lambda *x: os.path.join(here, *x)
             from distutils import sysconfig
             config = sysconfig.get_config_vars()
             try:
-                restore = senv(('CFLAGS', config['CFLAGS']),
-                    ('LDFLAGS', config['LDFLAGS']))
+                restore = senv(
+                    ('CFLAGS', config['CFLAGS']),
+                    ('LDFLAGS', config['LDFLAGS']),
+                )
                 try:
                     os.chdir(LRMQDIST())
                     if not os.path.isfile('config.h'):
                         print('- configure rabbitmq-c...')
-                        os.system('/bin/sh configure --disable-tools \
-                                   --disable-docs --disable-dependency-tracking')
+                        os.system(CMD_CONFIGURE)
                     #print('- make rabbitmq-c...')
                     #os.chdir(LRMQSRC())
                     #os.system(''%s' all' % find_make())
@@ -166,8 +171,6 @@ author = distmeta[1].strip()
 contact = distmeta[2].strip()
 homepage = distmeta[3].strip()
 
-
-
 ext_modules = []
 cmdclass = {}
 packages = []
@@ -187,7 +190,7 @@ elif find_make():
         print('Couldn not create builder: %r' % (exc, ))
     else:
         goahead = True
-        ext_modules= [librabbitmq_ext]
+        ext_modules = [librabbitmq_ext]
         cmdclass = {'build': build}
         packages = find_packages(exclude=['ez_setup', 'tests', 'tests.*'])
 
