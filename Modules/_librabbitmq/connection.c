@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
+#ifndef _WIN32
+# include <sys/poll.h>
+#endif
 
 #include <sys/time.h>
 
@@ -362,6 +365,7 @@ _PYRMQ_INLINE int64_t RabbitMQ_now_usec(void)
 
 _PYRMQ_INLINE int RabbitMQ_wait_nb(int sockfd)
 {
+#ifdef _WIN32
     register int result = 0;
     fd_set fdset;
     struct timeval tv = {0, 0};
@@ -375,10 +379,15 @@ _PYRMQ_INLINE int RabbitMQ_wait_nb(int sockfd)
     if (FD_ISSET(sockfd, &fdset))
         return 1;
     return 0;
+#else /* _WIN32 */
+    struct pollfd pollfd[1] = { sockfd, POLLIN };
+    return !!poll(&pollfd, 1, 0);
+#endif /* _WIN32 */
 }
 
 _PYRMQ_INLINE int RabbitMQ_wait_timeout(int sockfd, double timeout)
 {
+#ifdef _WIN32
     int64_t t1, t2;
     register int result = 0;
     fd_set fdset;
@@ -405,6 +414,10 @@ _PYRMQ_INLINE int RabbitMQ_wait_timeout(int sockfd, double timeout)
         timeout -= (double)(t2 / 1e6) - (t1 / 1e6);
     }
     return result;
+#else /* _WIN32 */
+    struct pollfd pollfd[1] = { sockfd, POLLIN };
+    return !!poll(&pollfd, 1, timeout*1000);
+#endif /* _WIN32 */
 }
 
 
