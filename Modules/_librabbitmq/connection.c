@@ -380,8 +380,9 @@ _PYRMQ_INLINE int RabbitMQ_wait_nb(int sockfd)
         return 1;
     return 0;
 #else /* _WIN32 */
-    struct pollfd pollfd[1] = { sockfd, POLLIN };
-    return !!poll(&pollfd, 1, 0);
+    struct pollfd pollfd = { sockfd, POLLIN, 0 };
+    int ret = poll(&pollfd, 1, 0);
+    return (ret > 0) ? 1 : ret;
 #endif /* _WIN32 */
 }
 
@@ -415,8 +416,9 @@ _PYRMQ_INLINE int RabbitMQ_wait_timeout(int sockfd, double timeout)
     }
     return result;
 #else /* _WIN32 */
-    struct pollfd pollfd[1] = { sockfd, POLLIN };
-    return !!poll(&pollfd, 1, timeout*1000);
+    struct pollfd pollfd = { sockfd, POLLIN, 0 };
+    int ret = poll(&pollfd, 1, (int)(timeout * 1000 + 0.5));
+    return (ret > 1) ? 1 : ret;
 #endif /* _WIN32 */
 }
 
@@ -988,12 +990,11 @@ bail:
 static PyObject*
 PyRabbitMQ_Connection_close(PyRabbitMQ_Connection *self)
 {
-    amqp_rpc_reply_t reply;
     if (self->connected) {
         self->connected = 0;
 
         Py_BEGIN_ALLOW_THREADS
-        reply = amqp_connection_close(self->conn, AMQP_REPLY_SUCCESS);
+        amqp_connection_close(self->conn, AMQP_REPLY_SUCCESS);
         amqp_destroy_connection(self->conn);
         close(self->sockfd);
         Py_END_ALLOW_THREADS
@@ -1741,7 +1742,6 @@ PyRabbitMQ_Connection_basic_cancel(PyRabbitMQ_Connection *self,
     PyObject *consumer_tag = NULL;
     unsigned int channel = 0;
 
-    amqp_basic_cancel_ok_t *ok;
     amqp_rpc_reply_t reply;
 
     if (PyRabbitMQ_Not_Connected(self))
@@ -1752,8 +1752,8 @@ PyRabbitMQ_Connection_basic_cancel(PyRabbitMQ_Connection *self,
     if ((consumer_tag = Maybe_Unicode(consumer_tag)) == NULL) goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
-    ok = amqp_basic_cancel(self->conn, channel,
-                           PyString_AS_AMQBYTES(consumer_tag));
+    amqp_basic_cancel(self->conn, channel,
+                      PyString_AS_AMQBYTES(consumer_tag));
     reply = amqp_get_rpc_reply(self->conn);
     amqp_maybe_release_buffers(self->conn);
     Py_END_ALLOW_THREADS;
@@ -1860,7 +1860,6 @@ PyRabbitMQ_Connection_flow(PyRabbitMQ_Connection *self,
     unsigned int channel = 0;
     unsigned int active  = 1;
 
-    amqp_channel_flow_ok_t *ok;
     amqp_rpc_reply_t reply;
 
     if (PyRabbitMQ_Not_Connected(self))
@@ -1870,7 +1869,7 @@ PyRabbitMQ_Connection_flow(PyRabbitMQ_Connection *self,
         goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
-    ok = amqp_channel_flow(self->conn, channel, (amqp_boolean_t)active);
+    amqp_channel_flow(self->conn, channel, (amqp_boolean_t)active);
     reply = amqp_get_rpc_reply(self->conn);
     amqp_maybe_release_buffers(self->conn);
     Py_END_ALLOW_THREADS;
@@ -1893,7 +1892,6 @@ PyRabbitMQ_Connection_basic_recover(PyRabbitMQ_Connection *self,
     unsigned int channel = 0;
     unsigned int requeue = 0;
 
-    amqp_basic_recover_ok_t *ok;
     amqp_rpc_reply_t reply;
 
     if (PyRabbitMQ_Not_Connected(self))
@@ -1903,7 +1901,7 @@ PyRabbitMQ_Connection_basic_recover(PyRabbitMQ_Connection *self,
         goto bail;
 
     Py_BEGIN_ALLOW_THREADS;
-    ok = amqp_basic_recover(self->conn, channel, (amqp_boolean_t)requeue);
+    amqp_basic_recover(self->conn, channel, (amqp_boolean_t)requeue);
     reply = amqp_get_rpc_reply(self->conn);
     amqp_maybe_release_buffers(self->conn);
     Py_END_ALLOW_THREADS;
