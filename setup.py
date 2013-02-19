@@ -1,5 +1,6 @@
 import os
 import platform
+import subprocess
 import sys
 from setuptools import setup, find_packages
 
@@ -46,6 +47,7 @@ def codegen():
 
 def create_builder():
     from setuptools import Extension
+    from setuptools.command.develop import develop as _develop
     from distutils.command.build import build as _build
     cmd = None
     pkgdirs = []  # incdirs and libdirs get these
@@ -153,7 +155,13 @@ def create_builder():
                 _build.run(self)
             finally:
                 os.environ.update(restore)
-    return librabbitmq_ext, build
+
+    class develop(_develop):
+        def run(self):
+            subprocess.check_call([find_make(), 'dist'], shell=True)
+            _develop.run(self)
+
+    return librabbitmq_ext, build, develop
 
 
 def find_make(alt=('gmake', 'gnumake', 'make', 'nmake')):
@@ -184,14 +192,17 @@ if is_jython or is_pypy or is_py3k or is_win:
     pass
 elif find_make():
     try:
-        librabbitmq_ext, build = create_builder()
+        librabbitmq_ext, build, develop = create_builder()
     except Exception, exc:
-        raise
         print('Couldn not create builder: %r' % (exc, ))
+        raise
     else:
         goahead = True
         ext_modules = [librabbitmq_ext]
-        cmdclass = {'build': build}
+        cmdclass = {
+            'build': build,
+            'develop': develop
+        }
         packages = find_packages(exclude=['ez_setup', 'tests', 'tests.*'])
 
 if not goahead:
