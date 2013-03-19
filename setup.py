@@ -204,6 +204,8 @@ elif find_make():
             'develop': develop
         }
         packages = find_packages(exclude=['ez_setup', 'tests', 'tests.*'])
+else:
+    raise RuntimeError('This system does not have a working "make"')
 
 if not goahead:
     ext_modules = []
