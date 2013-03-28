@@ -230,7 +230,6 @@ setup(
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Operating System :: POSIX',
-        'Operating System :: Microsoft :: Windows',
         'Programming Language :: C',
         'Programming Language :: Python :: 2.5',
         'Programming Language :: Python :: 2.6',
