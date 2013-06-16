@@ -119,8 +119,12 @@ def create_builder():
 
     class build(_build):
         stdcflags = [
-            '-W -Wall -DHAVE_CONFIG_H',
+            '-DHAVE_CONFIG_H',
         ]
+
+	if not platform.system() == "SunOS":
+           stdcflags.append('-W -Wall')
+
         if os.environ.get('PEDANTIC'):
             # Python.h breaks -pedantic, so can only use it while developing.
             stdcflags.append('-pedantic -Werror')

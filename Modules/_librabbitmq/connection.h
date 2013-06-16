@@ -42,6 +42,12 @@
  *   to the LLVM optimizer anyway, so we'll just disable it.
  */
 #  define _PYRMQ_INLINE
+# elif defined(__SUNPRO_C)
+/* Creates a compiler error on Sun Studio,
+ * reference to static identifier "AMQTable_toPyDict" in extern inline
+ * function, more info here:
+ * https://blogs.oracle.com/dew/entry/c99_inline_function */
+#  define _PYRMQ_INLINE
 # elif defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__)
 #  define _PYRMQ_INLINE extern __inline
 # else
