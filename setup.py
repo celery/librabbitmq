@@ -122,8 +122,8 @@ def create_builder():
             '-DHAVE_CONFIG_H',
         ]
 
-	if not platform.system() == "SunOS":
-           stdcflags.append('-W -Wall')
+        if platform.system() != "SunOS":
+            stdcflags.append('-W -Wall')
 
         if os.environ.get('PEDANTIC'):
             # Python.h breaks -pedantic, so can only use it while developing.
