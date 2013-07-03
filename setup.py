@@ -142,6 +142,7 @@ def create_builder():
                     os.chdir(LRMQDIST())
                     if not os.path.isfile('config.h'):
                         print('- configure rabbitmq-c...')
+                        print(CMD_CONFIGURE)
                         os.system(CMD_CONFIGURE)
                     #print('- make rabbitmq-c...')
                     #os.chdir(LRMQSRC())

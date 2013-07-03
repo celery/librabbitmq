@@ -2,6 +2,7 @@ RABBIT_DIR=rabbitmq-c
 CODEGEN_DIR=rabbitmq-codegen
 RABBIT_TARGET=clib
 RABBIT_DIST=librabbitmq-0.2.0
+CONFIGURE_ARGS=--disable-tools --disable-docs --enable-regen-amqp-framing
 
 
 all: build
@@ -53,7 +54,7 @@ distclean: pyclean rabbitmq-distclean
 	-rm -f erl_crash.dump
 
 $(RABBIT_TARGET):
-	(test -f config.h || cd $(RABBIT_DIR); ./configure --disable-tools --disable-docs)
+	(test -f config.h || cd $(RABBIT_DIR); ./configure $(CONFIGURE_ARGS) )
 	(cd $(RABBIT_DIR); make distdir)
 	mv "$(RABBIT_DIR)/$(RABBIT_DIST)" "$(RABBIT_TARGET)"
 
