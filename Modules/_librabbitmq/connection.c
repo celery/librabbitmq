@@ -733,6 +733,15 @@ int PyRabbitMQ_HandleError(int ret, char const *context)
     return 1;
 }
 
+void PyRabbitMQ_SetFrameError(const char *expected, amqp_frame_t* frame)
+{
+    char errorstr[1024];
+    snprintf(errorstr, sizeof(errorstr), "%s: %d",
+            expected, frame->frame_type);
+    PyErr_SetString(PyRabbitMQExc_ConnectionError, errorstr);
+}
+
+
 
 _PYRMQ_INLINE int
 PyRabbitMQ_HandlePollError(int ready)
@@ -948,11 +957,30 @@ PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self)
     if (!PyRabbitMQ_HandleError(self->sockfd, "Error opening socket"))
         goto error;
 
+    amqp_table_entry_t client_properties[1];
+    amqp_table_entry_t capabilities[1];
+    amqp_table_t capability_table;
+    amqp_table_t client_property_table;
+
+    capabilities[0].key = amqp_cstring_bytes("consumer_cancel_notify");
+    capabilities[0].value.kind = AMQP_FIELD_KIND_BOOLEAN;
+    capabilities[0].value.value.boolean = 1;
+    capability_table.num_entries = 1;
+    capability_table.entries = capabilities;
+    client_properties[0].key = amqp_cstring_bytes("capabilities");
+    client_properties[0].value.kind = AMQP_FIELD_KIND_TABLE;
+    client_properties[0].value.value.table = capability_table;
+    client_property_table.num_entries = 1;
+    client_property_table.entries = client_properties;
+
     Py_BEGIN_ALLOW_THREADS;
     amqp_set_sockfd(self->conn, self->sockfd);
-    reply = amqp_login(self->conn, self->virtual_host, self->channel_max,
-                       self->frame_max, self->heartbeat,
-                       AMQP_SASL_METHOD_PLAIN, self->userid, self->password);
+    reply = amqp_login_with_properties(
+        self->conn, self->virtual_host, self->channel_max,
+        self->frame_max, self->heartbeat,
+        &client_properties,
+        AMQP_SASL_METHOD_PLAIN, self->userid, self->password
+    );
     Py_END_ALLOW_THREADS;
     if (PyRabbitMQ_HandleAMQError(self, 0, reply, "Couldn't log in"))
         goto bail;
@@ -1126,6 +1154,24 @@ finally:
 }
 
 
+void __PyRabbitMQ_framedump(amqp_frame_t *frame)
+{
+    const char *type = NULL;
+    if (frame->frame_type == AMQP_FRAME_METHOD)
+        type = "METHOD";
+    else if (frame->frame_type == AMQP_FRAME_HEADER)
+        type = "HEADER";
+    else if (frame->frame_type == AMQP_FRAME_BODY)
+        type = "BODY";
+    else {
+        char buf[1024];
+        snprintf(buf, sizeof(buf), "%d", frame->frame_type);
+        type = buf;
+    }
+    printf("FRAME: %s\n", type);
+}
+
+
 int
 PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
                 amqp_connection_state_t conn, int piggyback)
@@ -1147,7 +1193,11 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
             amqp_maybe_release_buffers(conn);
             retval = amqp_simple_wait_frame(conn, &frame);
             Py_END_ALLOW_THREADS;
-            if (retval < 0) break;
+            if (retval < 0) {
+                printf("WAIT FROM NO RET\n");
+                break;
+            }
+            __PyRabbitMQ_framedump(&frame);
             if (frame.frame_type != AMQP_FRAME_METHOD
                     || frame.payload.method.id != AMQP_BASIC_DELIVER_METHOD)
                 continue;
@@ -1199,8 +1249,7 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
             if (retval < 0) break;
 
             if (frame.frame_type != AMQP_FRAME_BODY) {
-                PyErr_SetString(PyRabbitMQExc_ChannelError,
-                    "Expected body, got unexpected frame");
+                PyRabbitMQ_SetFrameError("Expected body, got unexpected frame:", &frame);
                 goto finally;
             }
             bufp           = frame.payload.body_fragment.bytes;
