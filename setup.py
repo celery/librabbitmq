@@ -184,7 +184,6 @@ homepage = distmeta[3].strip()
 ext_modules = []
 cmdclass = {}
 packages = []
-install_requires = []
 goahead = False
 is_jython = sys.platform.startswith('java')
 is_pypy = hasattr(sys, 'pypy_version_info')
@@ -223,7 +222,9 @@ setup(
     zip_safe=False,
     packages=packages,
     cmdclass=cmdclass,
-    install_requires=install_requires,
+    install_requires=[
+        'amqp>=1.2.1',
+    ],
     ext_modules=ext_modules,
     classifiers=[
         'Development Status :: 5 - Production/Stable',
