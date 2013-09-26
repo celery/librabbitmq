@@ -125,15 +125,18 @@ class Channel(object):
                 exchange, type, passive, durable, auto_delete, arguments or {})
 
     def exchange_delete(self, exchange='', if_unused=False, nowait=False):
-        return self.connection._exchange_delete(self.channel_id,
-                exchange, if_unused)
+        return self.connection._exchange_delete(
+                self.channel_id, exchange, if_unused)
 
     def queue_declare(self, queue='', passive=False, durable=False,
-            exclusive=False, auto_delete=False, arguments=None,
-            nowait=False):
-        return self.connection._queue_declare(self.channel_id,
-                queue, passive, durable, exclusive, auto_delete,
-                arguments or {})
+                      exclusive=False, auto_delete=False, arguments=None,
+                      nowait=False):
+        return queue_declare_ok_t(
+            *self.connection._queue_declare(
+                self.channel_id, queue, passive, durable,
+                exclusive, auto_delete, arguments or {},
+            ),
+        )
 
     def queue_bind(self, queue='', exchange='', routing_key='',
             arguments=None, nowait=False):
