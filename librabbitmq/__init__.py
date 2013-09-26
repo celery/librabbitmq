@@ -136,9 +136,11 @@ class Channel(object):
     def queue_declare(self, queue='', passive=False, durable=False,
                       exclusive=False, auto_delete=False, arguments=None,
                       nowait=False):
-        return self.connection._queue_declare(
-            self.channel_id, queue, passive, durable,
-            exclusive, auto_delete, arguments or {},
+        return queue_declare_ok_t(
+            *self.connection._queue_declare(
+                self.channel_id, queue, passive, durable,
+                exclusive, auto_delete, arguments or {},
+            ),
         )
 
     def queue_bind(self, queue='', exchange='', routing_key='',
