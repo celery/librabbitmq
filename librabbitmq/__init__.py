@@ -57,7 +57,7 @@ class Channel(object):
     def flow(self, active):
         return self.connection._flow(self.channel_id, active)
 
-    def recover(self, requeue=True):
+    def basic_recover(self, requeue=True):
         return self.connection._basic_recover(self.channel_id, requeue)
 
     def basic_get(self, queue='', no_ack=False):
