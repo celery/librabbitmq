@@ -92,7 +92,12 @@ class Channel(object):
     def basic_cancel(self, consumer_tag, **kwargs):
         self.no_ack_consumers.discard(consumer_tag)
         if self.connection:
-            self.connection.callbacks[self.channel_id].pop(consumer_tag, None)
+            try:
+                callbacks = self.connection.callbacks[self.channel_id]
+            except KeyError:
+                pass
+            else:
+                callbacks.pop(consumer_tag, None)
             self.connection._basic_cancel(self.channel_id, consumer_tag)
 
     def basic_publish(self, body, exchange='', routing_key='',
