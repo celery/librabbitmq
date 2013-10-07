@@ -91,8 +91,9 @@ class Channel(object):
 
     def basic_cancel(self, consumer_tag, **kwargs):
         self.no_ack_consumers.discard(consumer_tag)
-        self.connection.callbacks[self.channel_id].pop(consumer_tag, None)
-        self.connection._basic_cancel(self.channel_id, consumer_tag)
+        if self.connection:
+            self.connection.callbacks[self.channel_id].pop(consumer_tag, None)
+            self.connection._basic_cancel(self.channel_id, consumer_tag)
 
     def basic_publish(self, body, exchange='', routing_key='',
             mandatory=False, immediate=False, **properties):
@@ -146,7 +147,8 @@ class Channel(object):
                 queue, if_unused, if_empty)
 
     def close(self):
-        self.connection._remove_channel(self)
+        if self.connection:
+            self.connection._remove_channel(self)
 
 
 class Connection(_librabbitmq.Connection):
