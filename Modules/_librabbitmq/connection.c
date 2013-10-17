@@ -1930,7 +1930,7 @@ PyRabbitMQ_Connection_basic_recv(PyRabbitMQ_Connection *self,
 
     if (PyRabbitMQ_recv(self, NULL, self->conn, 0) < 0) {
         if (!PyErr_Occurred())
-            PyErr_SetString(PyRabbitMQExc_ChannelError, "Bad frame read");
+            PyErr_SetString(PyRabbitMQExc_ConnectionError, "Bad frame read");
         goto error;
     }
 
@@ -1999,7 +1999,7 @@ PyRabbitMQ_Connection_basic_get(PyRabbitMQ_Connection *self,
     if (amqp_data_in_buffer(self->conn)) {
         if (PyRabbitMQ_recv(self, p, self->conn, 1) < 0) {
             if (!PyErr_Occurred())
-                PyErr_SetString(PyRabbitMQExc_ChannelError,
+                PyErr_SetString(PyRabbitMQExc_ConnectionError,
                         "Bad frame read");
             Py_XDECREF(p);
             Py_XDECREF(delivery_info);
