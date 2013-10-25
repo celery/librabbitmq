@@ -15,7 +15,7 @@ ConnectionError = _librabbitmq.ConnectionError
 ChannelError = _librabbitmq.ChannelError
 
 
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 __all__ = ['Connection', 'Message', 'ConnectionError', 'ChannelError']
 
 

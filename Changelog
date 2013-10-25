@@ -7,7 +7,23 @@
 .. contents::
     :local:
 
+.. _version-1.0.2:
+
+1.0.2
+=====
+:release-date: 2013-10-25 11:00 P.M UTC
+
+- "Bad Frame Read" is now ConnectionError, not ChannelError.
+
+- Fixed problem with basic_cancel when disconnected.
+
+- Fixed typo Channel.recover -> Channel.basic_recover
+
 .. _version-1.0.1:
+
+1.0.1
+=====
+:release-date: 2013-01-14 02:10 P.M UTC
 
 - ``queue_unbind`` argument ``binding_key`` renamed to ``routing_key``
   (Issue #16).
