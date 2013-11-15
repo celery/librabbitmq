@@ -124,14 +124,22 @@ def create_builder():
             from distutils import sysconfig
             config = sysconfig.get_config_vars()
             try:
-                restore = senv(('CFLAGS', config['CFLAGS']),
-                    ('LDFLAGS', config['LDFLAGS']))
+                vars = {'ld': config['LDFLAGS'],
+                        'c': config['CFLAGS']}
+                for key in list(vars):
+                    vars[key] = vars[key].replace('-lSystem', '')
+                    vars[key] = vars[key].replace(
+                        '-isysroot /Developer/SDKs/MacOSX10.6.sdk', '')
+                    vars[key] = vars[key].replace('-Wall', '')
+                restore = senv(('CFLAGS', vars['c']),
+                    ('LDFLAGS', vars['ld']))
                 try:
                     os.chdir(LRMQDIST())
                     if not os.path.isfile('config.h'):
                         print('- configure rabbitmq-c...')
-                        os.system('/bin/sh configure --disable-tools \
-                                   --disable-docs --disable-dependency-tracking')
+                        if os.system('/bin/sh configure --disable-tools \
+                                --disable-docs --disable-dependency-tracking'):
+                            return
                     #print('- make rabbitmq-c...')
                     #os.chdir(LRMQSRC())
                     #os.system(''%s' all' % find_make())
@@ -183,8 +191,8 @@ elif find_make():
     try:
         librabbitmq_ext, build = create_builder()
     except Exception, exc:
+        print('Could not create builder: %r' % (exc, ))
         raise
-        print('Couldn not create builder: %r' % (exc, ))
     else:
         goahead = True
         ext_modules= [librabbitmq_ext]

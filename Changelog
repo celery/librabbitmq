@@ -7,6 +7,14 @@
 .. contents::
     :local:
 
+.. _version-1.0.3:
+
+1.0.3
+=====
+:release-date: 2013-11-15 11:00 P.M UTC
+
+- Fixed installation problem on OS X 10.9
+
 .. _version-1.0.2:
 
 1.0.2
