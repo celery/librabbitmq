@@ -958,15 +958,20 @@ PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self)
         goto error;
 
     amqp_table_entry_t client_properties[1];
-    amqp_table_entry_t capabilities[1];
+    amqp_table_entry_t capabilities[2];
     amqp_table_t capability_table;
     amqp_table_t client_property_table;
 
     capabilities[0].key = amqp_cstring_bytes("consumer_cancel_notify");
     capabilities[0].value.kind = AMQP_FIELD_KIND_BOOLEAN;
     capabilities[0].value.value.boolean = 1;
-    capability_table.num_entries = 1;
+    capabilities[1].key = amqp_cstring_bytes("connection.blocked");
+    capabilities[1].value.kind = AMQP_FIELD_KIND_BOOLEAN;
+    capabilities[1].value.value.boolean = 1;
+
+    capability_table.num_entries = 2;
     capability_table.entries = capabilities;
+
     client_properties[0].key = amqp_cstring_bytes("capabilities");
     client_properties[0].value.kind = AMQP_FIELD_KIND_TABLE;
     client_properties[0].value.value.table = capability_table;
