@@ -121,6 +121,7 @@ def create_builder():
     class build(_build):
         stdcflags = [
             '-DHAVE_CONFIG_H',
+            '-std=c99'
         ]
 
         if platform.system() != "SunOS":
