@@ -1,7 +1,8 @@
 RABBIT_DIR=rabbitmq-c
 CODEGEN_DIR=rabbitmq-codegen
 RABBIT_TARGET=clib
-RABBIT_DIST=librabbitmq-0.2.0
+RABBIT_VERSION=0.3.0
+RABBIT_DIST=librabbitmq-$(RABBIT_VERSION)
 CONFIGURE_ARGS=--disable-tools --disable-docs --enable-regen-amqp-framing
 
 
