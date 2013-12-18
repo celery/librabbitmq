@@ -134,10 +134,15 @@ def create_builder():
             from distutils import sysconfig
             config = sysconfig.get_config_vars()
             try:
-                restore = senv(
-                    ('CFLAGS', config['CFLAGS']),
-                    ('LDFLAGS', config['LDFLAGS']),
-                )
+                vars = {'ld': config['LDFLAGS'],
+                        'c': config['CFLAGS']}
+                for key in list(vars):
+                    vars[key] = vars[key].replace('-lSystem', '')
+                    vars[key] = vars[key].replace(
+                        '-isysroot /Developer/SDKs/MacOSX10.6.sdk', '')
+                    vars[key] = vars[key].replace('-Wall', '')
+                restore = senv(('CFLAGS', vars['c']),
+                               ('LDFLAGS', vars['ld']))
                 try:
                     os.chdir(LRMQDIST())
                     if not os.path.isfile('config.h'):
@@ -198,7 +203,7 @@ elif find_make():
     try:
         librabbitmq_ext, build, develop = create_builder()
     except Exception, exc:
-        print('Couldn not create builder: %r' % (exc, ))
+        print('Could not create builder: %r' % (exc, ))
         raise
     else:
         goahead = True

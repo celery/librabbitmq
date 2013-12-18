@@ -2,6 +2,7 @@ import itertools
 
 import _librabbitmq
 
+from amqp.protocol import queue_declare_ok_t
 from array import array
 
 __version__ = _librabbitmq.__version__
@@ -14,7 +15,7 @@ ConnectionError = _librabbitmq.ConnectionError
 ChannelError = _librabbitmq.ChannelError
 
 
-__version__ = '1.0.1'
+__version__ = '1.0.3'
 __all__ = ['Connection', 'Message', 'ConnectionError', 'ChannelError']
 
 
@@ -96,9 +97,11 @@ class Channel(object):
         self.no_ack_consumers.discard(consumer_tag)
         if self.connection:
             try:
-                self.connection.callbacks[self.channel_id].pop(consumer_tag, None)
+                callbacks = self.connection.callbacks[self.channel_id]
             except KeyError:
                 pass
+            else:
+                callbacks.pop(consumer_tag, None)
             self.connection._basic_cancel(self.channel_id, consumer_tag)
 
     def basic_publish(self, body, exchange='', routing_key='',
@@ -140,7 +143,7 @@ class Channel(object):
             *self.connection._queue_declare(
                 self.channel_id, queue, passive, durable,
                 exclusive, auto_delete, arguments or {},
-            ),
+            )
         )
 
     def queue_bind(self, queue='', exchange='', routing_key='',
