@@ -926,7 +926,13 @@ PyRabbitMQ_ConnectionType_init(PyRabbitMQ_Connection *self,
 static PyObject*
 PyRabbitMQ_Connection_fileno(PyRabbitMQ_Connection *self)
 {
-    return PyInt_FromLong((long)self->sockfd);
+    if (self->sockfd > 0) {
+        return PyInt_FromLong((long)self->sockfd);
+    }
+    else {
+        PyErr_SetString(PyExc_ValueError, "Socket not connected");
+        return 0;
+    }
 }
 
 
@@ -995,6 +1001,7 @@ PyRabbitMQ_Connection_close(PyRabbitMQ_Connection *self)
         reply = amqp_connection_close(self->conn, AMQP_REPLY_SUCCESS);
         amqp_destroy_connection(self->conn);
         close(self->sockfd);
+        self->sockfd = 0;
         Py_END_ALLOW_THREADS
     }
 
