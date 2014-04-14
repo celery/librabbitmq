@@ -124,7 +124,7 @@ class Channel(object):
         return self.connection._exchange_declare(self.channel_id,
                 exchange, type, passive, durable, auto_delete, arguments or {})
 
-    def exchange_delete(self, exchange='', if_unused=False):
+    def exchange_delete(self, exchange='', if_unused=False, nowait=False):
         return self.connection._exchange_delete(self.channel_id,
                 exchange, if_unused)
 
