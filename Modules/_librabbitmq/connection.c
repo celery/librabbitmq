@@ -1655,6 +1655,7 @@ PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
                              (amqp_boolean_t)immediate,
                              &props,
                              bytes);
+    amqp_maybe_release_buffers(self->conn);
     Py_END_ALLOW_THREADS;
 
     if (!PyRabbitMQ_HandleError(ret, "basic.publish"))
