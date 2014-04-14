@@ -1,7 +1,7 @@
 RABBIT_DIR=rabbitmq-c
 CODEGEN_DIR=rabbitmq-codegen
 RABBIT_TARGET=clib
-RABBIT_DIST=librabbitmq-0.2.0
+RABBIT_DIST=rabbitmq-c-0.5.0
 
 
 all: build

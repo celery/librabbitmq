@@ -140,6 +140,7 @@ typedef struct {
     int sockfd;
     int connected;
 
+    PyObject *server_properties;
     PyObject *callbacks;    /* {channel_id: {consumer_tag:callback}} */
 
     PyObject *weakreflist;
@@ -244,6 +245,8 @@ static PyMemberDef PyRabbitMQ_ConnectionType_members[] = {
         offsetof(PyRabbitMQ_Connection, port), READONLY, NULL},
     {"heartbeat", T_INT,
         offsetof(PyRabbitMQ_Connection, heartbeat), READONLY, NULL},
+    {"server_properties", T_OBJECT_EX,
+        offsetof(PyRabbitMQ_Connection, server_properties), READONLY, NULL},
     {"connected", T_INT,
         offsetof(PyRabbitMQ_Connection, connected), READONLY, NULL},
     {"channel_max", T_INT,

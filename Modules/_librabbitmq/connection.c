@@ -6,6 +6,7 @@
 #include <sys/time.h>
 
 #include <amqp.h>
+#include <amqp_tcp_socket.h>
 
 #include "connection.h"
 #include "distmeta.h"
@@ -761,7 +762,7 @@ int PyRabbitMQ_HandleAMQError(PyRabbitMQ_Connection *self, unsigned int channel,
             snprintf(errorstr, sizeof(errorstr), "%s: %s",
                     context,
                     reply.library_error
-                        ? amqp_error_string(reply.library_error)
+                        ? amqp_error_string2(reply.library_error)
                         : "(end-of-stream)");
             goto connerror;
 
@@ -848,6 +849,7 @@ PyRabbitMQ_ConnectionType_new(PyTypeObject *type,
         self->port = 5672;
         self->sockfd = 0;
         self->connected = 0;
+        self->server_properties = NULL;
         self->callbacks = NULL;
     }
     return self;
@@ -863,6 +865,7 @@ PyRabbitMQ_ConnectionType_dealloc(PyRabbitMQ_Connection *self)
     if (self->weakreflist != NULL)
         PyObject_ClearWeakRefs((PyObject*)self);
     Py_XDECREF(self->callbacks);
+    Py_XDECREF(self->server_properties);
     self->ob_type->tp_free(self);
 }
 
@@ -910,8 +913,8 @@ PyRabbitMQ_ConnectionType_init(PyRabbitMQ_Connection *self,
     self->heartbeat = heartbeat;
     self->weakreflist = NULL;
     self->callbacks = PyDict_New();
-    if (self->callbacks == NULL)
-        return -1;
+    if (self->callbacks == NULL) return -1;
+    self->server_properties = NULL;
 
     return 0;
 }
@@ -933,6 +936,8 @@ PyRabbitMQ_Connection_fileno(PyRabbitMQ_Connection *self)
 static PyObject*
 PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self)
 {
+    int status;
+    amqp_socket_t *socket = NULL;
     amqp_rpc_reply_t reply;
 
     if (self->connected) {
@@ -941,13 +946,19 @@ PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self)
     }
     Py_BEGIN_ALLOW_THREADS;
     self->conn = amqp_new_connection();
-    self->sockfd = amqp_open_socket(self->hostname, self->port);
+    socket = amqp_tcp_socket_new(self->conn);
     Py_END_ALLOW_THREADS;
+
+    if (!socket) goto error;
+    Py_BEGIN_ALLOW_THREADS;
+    status = amqp_socket_open(socket, self->hostname, self->port);
+    Py_END_ALLOW_THREADS;
+    if (status) goto error;
     if (!PyRabbitMQ_HandleError(self->sockfd, "Error opening socket"))
         goto error;
 
     Py_BEGIN_ALLOW_THREADS;
-    amqp_set_sockfd(self->conn, self->sockfd);
+    self->sockfd = amqp_socket_get_sockfd(socket);
     reply = amqp_login(self->conn, self->virtual_host, self->channel_max,
                        self->frame_max, self->heartbeat,
                        AMQP_SASL_METHOD_PLAIN, self->userid, self->password);
@@ -960,6 +971,7 @@ PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self)
     self->channel_max = self->conn->channel_max;
     self->frame_max = self->conn->frame_max;
     self->heartbeat = self->conn->heartbeat;
+    self->server_properties = AMQTable_toPyDict(amqp_get_server_properties(self->conn));
     Py_RETURN_NONE;
 error:
     PyRabbitMQ_Connection_close(self);

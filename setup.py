@@ -76,21 +76,19 @@ def create_builder():
     ])
     librabbit_files = map(LRMQSRC, [
         'amqp_api.c',
-        'amqp_mem.c',
-        'amqp_url.c',
         'amqp_connection.c',
-        'amqp_socket.c',
+        'amqp_consumer.c',
         'amqp_framing.c',
+        'amqp_hostcheck.c',
+        'amqp_mem.c',
+        'amqp_socket.c',
         'amqp_table.c',
+        'amqp_tcp_socket.c',
+        'amqp_timer.c',
+        'amqp_url.c',
     ])
 
     incdirs.append(LRMQDIST())  # for config.h
-    if platform.system() == 'Windows':
-        incdirs.append(LRMQSRC('windows'))
-        librabbit_files.append(LRMQSRC('windows', 'socket.c'))
-    else:
-        incdirs.append(LRMQSRC('unix'))
-        librabbit_files.append(LRMQSRC('unix', 'socket.c'))
 
     librabbitmq_ext = Extension('_librabbitmq',
                             sources=PyC_files + librabbit_files,
