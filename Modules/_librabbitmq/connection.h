@@ -148,7 +148,7 @@ typedef struct {
 
 int
 PyDict_to_basic_properties(PyObject *, amqp_basic_properties_t *,
-                           amqp_connection_state_t);
+                           amqp_connection_state_t, amqp_pool_t *);
 
 /* Connection method sigs */
 static PyRabbitMQ_Connection*
