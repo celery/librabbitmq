@@ -128,6 +128,8 @@ def create_builder():
                         'c': config['CFLAGS']}
                 for key in list(vars):
                     vars[key] = vars[key].replace('-lSystem', '')
+                    # Python on Maverics sets this, but not supported on clang
+                    vars[key] = vars[key].replace('-mno-fused-madd', '')
                     vars[key] = vars[key].replace(
                         '-isysroot /Developer/SDKs/MacOSX10.6.sdk', '')
                     vars[key] = vars[key].replace('-Wall', '')
