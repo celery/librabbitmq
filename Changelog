@@ -7,6 +7,27 @@
 .. contents::
     :local:
 
+.. _version-1.5.0:
+
+1.5.0
+=====
+:release-date: 2014-04-14 09:00 P.M UTC
+:release-by: Ask Solem
+
+- Updated to use rabbitmq-c 0.5.0
+
+- Now supports ``Connection.server_properties``.
+
+- Now compiles on LLVM/clang and OS X Mavericks by removing the
+  ``--mno-fused-madd`` option set by some Python installations.
+
+- Fixes possible memory leak in ``basic_publish`` (Issue #38).
+
+- ``Connection.fileno()`` now raises ``ValueError`` if the connection is
+  disconnected (Issue #39).
+
+- ``exchange_delete`` now ignores ``nowait`` argument.
+
 .. _version-1.0.3:
 
 1.0.3
