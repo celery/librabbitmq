@@ -104,6 +104,7 @@ static amqp_array_t PyList_ToAMQArray(amqp_connection_state_t, PyObject *, amqp_
 static PyObject* AMQTable_toPyDict(amqp_table_t *table);
 static PyObject* AMQArray_toPyList(amqp_array_t *array);
 
+int PyRabbitMQ_HandleAMQStatus(int, const char *);
 
 int PyRabbitMQ_Not_Connected(PyRabbitMQ_Connection *self)
 {
@@ -744,6 +745,18 @@ PyRabbitMQ_HandlePollError(int ready)
 }
 
 
+int PyRabbitMQ_HandleAMQStatus(int status, const char *context)
+{
+    char errorstr[1024];
+    if (status) {
+        snprintf(errorstr, sizeof(errorstr), "%s: %s",
+                context, amqp_error_string2(status));
+        PyErr_SetString(PyRabbitMQExc_ConnectionError, errorstr);
+    }
+    return status;
+}
+
+
 int PyRabbitMQ_HandleAMQError(PyRabbitMQ_Connection *self, unsigned int channel,
         amqp_rpc_reply_t reply, const char *context)
 {
@@ -955,13 +968,16 @@ PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self)
     socket = amqp_tcp_socket_new(self->conn);
     Py_END_ALLOW_THREADS;
 
-    if (!socket) goto error;
+    if (!socket) {
+        PyErr_NoMemory();
+        goto error;
+    }
     Py_BEGIN_ALLOW_THREADS;
     status = amqp_socket_open(socket, self->hostname, self->port);
     Py_END_ALLOW_THREADS;
-    if (status) goto error;
-    if (!PyRabbitMQ_HandleError(self->sockfd, "Error opening socket"))
+    if (PyRabbitMQ_HandleAMQStatus(status, "Error opening socket")) {
         goto error;
+    }
 
     Py_BEGIN_ALLOW_THREADS;
     self->sockfd = amqp_socket_get_sockfd(socket);
