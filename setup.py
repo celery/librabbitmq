@@ -131,8 +131,13 @@ def create_builder():
                     vars[key] = vars[key].replace(
                         '-isysroot /Developer/SDKs/MacOSX10.6.sdk', '')
                     vars[key] = vars[key].replace('-Wall', '')
-                restore = senv(('CFLAGS', vars['c']),
-                    ('LDFLAGS', vars['ld']))
+                if is_linux:
+                    # Issue #42
+                    vars['ld'] += ' -lrt'
+                restore = senv(
+                    ('CFLAGS', vars['c']),
+                    ('LDFLAGS', vars['ld']),
+                )
                 try:
                     os.chdir(LRMQDIST())
                     if not os.path.isfile('config.h'):
@@ -185,6 +190,7 @@ is_jython = sys.platform.startswith('java')
 is_pypy = hasattr(sys, 'pypy_version_info')
 is_py3k = sys.version_info[0] == 3
 is_win = platform.system() == 'Windows'
+is_linux = platform.system() == 'Linux'
 if is_jython or is_pypy or is_py3k or is_win:
     pass
 elif find_make():
