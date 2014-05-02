@@ -90,6 +90,9 @@ def create_builder():
 
     incdirs.append(LRMQDIST())  # for config.h
 
+    if is_linux:  # Issue #42
+        libs.append('rt')  # -lrt for clock_gettime
+
     librabbitmq_ext = Extension('_librabbitmq',
                             sources=PyC_files + librabbit_files,
                             libraries=libs, include_dirs=incdirs,
