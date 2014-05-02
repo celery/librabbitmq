@@ -90,6 +90,9 @@ def create_builder():
 
     incdirs.append(LRMQDIST())  # for config.h
 
+    if is_linux:  # Issue #42
+        libs.append('rt')  # -lrt for clock_gettime
+
     librabbitmq_ext = Extension('_librabbitmq',
                             sources=PyC_files + librabbit_files,
                             libraries=libs, include_dirs=incdirs,
@@ -185,6 +188,7 @@ is_jython = sys.platform.startswith('java')
 is_pypy = hasattr(sys, 'pypy_version_info')
 is_py3k = sys.version_info[0] == 3
 is_win = platform.system() == 'Windows'
+is_linux = platform.system() == 'Linux'
 if is_jython or is_pypy or is_py3k or is_win:
     pass
 elif find_make():
