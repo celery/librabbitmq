@@ -46,7 +46,7 @@ def create_builder():
     from distutils.command.build import build as _build
     cmd = None
     pkgdirs = []  # incdirs and libdirs get these
-    libs = []#'rabbitmq']
+    libs = []
     defs = []
     incdirs = []
     libdirs = []
@@ -131,9 +131,6 @@ def create_builder():
                     vars[key] = vars[key].replace(
                         '-isysroot /Developer/SDKs/MacOSX10.6.sdk', '')
                     vars[key] = vars[key].replace('-Wall', '')
-                if is_linux:
-                    # Issue #42
-                    vars['ld'] += ' -lrt'
                 restore = senv(
                     ('CFLAGS', vars['c']),
                     ('LDFLAGS', vars['ld']),
