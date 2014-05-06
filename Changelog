@@ -7,6 +7,17 @@
 .. contents::
     :local:
 
+.. _version-1.5.1:
+
+1.5.1
+=====
+:release-date: 2014-05-06 01:00 P.M UTC
+:release-by: Ask Solem
+
+- Fixed problem with compilation on Linux where `-lrt` is required.
+
+    Fix contributed by Roger Hu.
+
 .. _version-1.5.0:
 
 1.5.0
