@@ -42,10 +42,16 @@ _PYRMQ_INLINE void
 AMQTable_SetIntValue(amqp_table_t *, amqp_bytes_t, int);
 
 _PYRMQ_INLINE void
+AMQTable_SetNilValue(amqp_table_t *, amqp_bytes_t);
+
+_PYRMQ_INLINE void
 AMQTable_SetDoubleValue(amqp_table_t *, amqp_bytes_t, double);
 
 _PYRMQ_INLINE amqp_field_value_t*
 AMQArray_AddEntry(amqp_array_t*);
+
+_PYRMQ_INLINE void
+AMQArray_SetNilValue(amqp_array_t*);
 
 _PYRMQ_INLINE void
 AMQArray_SetTableValue(amqp_array_t*, amqp_table_t);
@@ -164,6 +170,12 @@ AMQTable_SetIntValue(amqp_table_t *table,
 }
 
 _PYRMQ_INLINE void
+AMQTable_SetNilValue(amqp_table_t *table, amqp_bytes_t key) {
+    amqp_table_entry_t *entry = AMQTable_AddEntry(table, key);
+    entry->value.kind = AMQP_FIELD_KIND_VOID;
+}
+
+_PYRMQ_INLINE void
 AMQTable_SetDoubleValue(amqp_table_t *table,
                         amqp_bytes_t key, double value)
 {
@@ -178,6 +190,13 @@ AMQArray_AddEntry(amqp_array_t *array)
     amqp_field_value_t *entry = &array->entries[array->num_entries];
     array->num_entries++;
     return entry;
+}
+
+_PYRMQ_INLINE void
+AMQArray_SetNilValue(amqp_array_t *array)
+{
+    amqp_field_value_t *entry = AMQArray_AddEntry(array);
+    entry->kind = AMQP_FIELD_KIND_VOID;
 }
 
 _PYRMQ_INLINE void
@@ -231,13 +250,17 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
     dst.entries = amqp_pool_alloc(pool, size * sizeof(amqp_table_entry_t));
     while (PyDict_Next(src, &pos, &dkey, &dvalue)) {
 
-        if (PyDict_Check(dvalue)) {
+        if (dvalue == Py_None) {
+            /* None */
+            AMQTable_SetNilValue(&dst, PyString_AS_AMQBYTES(dkey));
+        }
+        else if (PyDict_Check(dvalue)) {
             /* Dict */
             AMQTable_SetTableValue(&dst,
                     PyString_AS_AMQBYTES(dkey),
                     PyDict_ToAMQTable(conn, dvalue, pool));
         }
-        else if (PyList_Check(dvalue)) {
+        else if (PyList_Check(dvalue) || PyTuple_Check(dvalue)) {
             /* List */
             AMQTable_SetArrayValue(&dst,
                     PyString_AS_AMQBYTES(dkey),
@@ -251,6 +274,15 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
             AMQTable_SetIntValue(&dst,
                     PyString_AS_AMQBYTES(dkey),
                     clong_value
+            );
+        }
+        else if (PyFloat_Check(dvalue)) {
+            cdouble_value = PyFloat_AsDouble(dvalue);
+            if (PyErr_Occurred())
+                goto error;
+            AMQTable_SetDoubleValue(&dst,
+                PyString_AS_AMQBYTES(dkey),
+                    cdouble_value
             );
         }
         else {
@@ -267,23 +299,11 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
                 );
             }
             else {
-                cdouble_value = PyFloat_AsDouble(dvalue);
-                if (PyErr_Occurred())
-                    goto error;
-                if (PyFloat_Check(dvalue)) {
-
-                    AMQTable_SetDoubleValue(&dst,
-                        PyString_AS_AMQBYTES(dkey),
-                        cdouble_value
-                    );
-                }
-                else {
-                    /* unsupported type */
-                    PyErr_Format(PyExc_ValueError,
-                        "Table member %s is of an unsupported type",
-                        PyString_AS_STRING(dkey));
-                    goto error;
-            }
+                /* unsupported type */
+                PyErr_Format(PyExc_ValueError,
+                    "Table member %s is of an unsupported type",
+                    PyString_AS_STRING(dkey));
+                goto error;
             }
         }
     }
@@ -312,7 +332,11 @@ PyList_ToAMQArray(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
 
         dvalue = PyList_GetItem(src, pos);
 
-        if (PyDict_Check(dvalue)) {
+        if (dvalue == Py_None) {
+            /* None */
+            AMQArray_SetNilValue(&dst);
+        }
+        else if (PyDict_Check(dvalue)) {
             /* Dict */
             AMQArray_SetTableValue(&dst,
                     PyDict_ToAMQTable(conn, dvalue, pool));
@@ -481,6 +505,9 @@ AMQTable_toPyDict(amqp_table_t *table)
         int i;
         for (i = 0; i < table->num_entries; ++i, key=value=NULL) {
             switch (table->entries[i].value.kind) {
+                case AMQP_FIELD_KIND_VOID:
+                    value = Py_None;
+                    break;
                 case AMQP_FIELD_KIND_BOOLEAN:
                     value = PyBool_FromLong(AMQTable_VAL(table, i, boolean));
                     break;
@@ -614,7 +641,6 @@ AMQArray_toPyList(amqp_array_t *array)
     return list;
 }
 
-
 _PYRMQ_INLINE int
 PyDict_to_basic_properties(PyObject *p,
                            amqp_basic_properties_t *props,
@@ -685,8 +711,7 @@ PyDict_to_basic_properties(PyObject *p,
 
     if ((value = PyDict_GetItemString(p, "headers")) != NULL) {
         props->headers = PyDict_ToAMQTable(conn, value, pool);
-        if (PyErr_Occurred())
-            return -1;
+        if (PyErr_Occurred()) return -1;
     }
     return 1;
 }
@@ -1682,8 +1707,9 @@ PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
 
     Py_INCREF(propdict);
     channel_pool = amqp_get_or_create_channel_pool(self->conn, (amqp_channel_t)channel);
-    if (!PyDict_to_basic_properties(propdict, &props, self->conn, channel_pool))
+    if (PyDict_to_basic_properties(propdict, &props, self->conn, channel_pool) < 1) {
         goto bail;
+    }
     Py_DECREF(propdict);
 
     bytes.len = (size_t)body_size;
@@ -1700,8 +1726,9 @@ PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
     amqp_maybe_release_buffers(self->conn);
     Py_END_ALLOW_THREADS;
 
-    if (!PyRabbitMQ_HandleError(ret, "basic.publish"))
+    if (!PyRabbitMQ_HandleError(ret, "basic.publish")) {
         goto error;
+    }
     Py_RETURN_NONE;
 
 error:
