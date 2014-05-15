@@ -3,6 +3,7 @@ import socket
 
 import _librabbitmq
 
+from amqp.protocol import queue_declare_ok_t
 from array import array
 
 __version__ = _librabbitmq.__version__
@@ -135,7 +136,7 @@ class Channel(object):
             *self.connection._queue_declare(
                 self.channel_id, queue, passive, durable,
                 exclusive, auto_delete, arguments or {},
-            ),
+            )
         )
 
     def queue_bind(self, queue='', exchange='', routing_key='',
