@@ -1097,7 +1097,7 @@ PyRabbitMQ_Connection_destroy_channel(PyRabbitMQ_Connection *self,
     amqp_rpc_reply_t reply;
     Py_BEGIN_ALLOW_THREADS;
     reply = amqp_channel_close(self->conn, channel, AMQP_REPLY_SUCCESS);
-    amqp_maybe_release_buffers(self->conn);
+    amqp_maybe_release_buffers_on_channel(self->conn, channel);
     Py_END_ALLOW_THREADS;
 
     return PyRabbitMQ_HandleAMQError(self, channel, reply, "Couldn't close channel");
@@ -1212,7 +1212,7 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
     while (1) {
         if (!piggyback) {
             Py_BEGIN_ALLOW_THREADS;
-            amqp_maybe_release_buffers(conn);
+            amqp_maybe_release_buffers_on_channel(conn, channel);
             retval = amqp_simple_wait_frame(conn, &frame);
             Py_END_ALLOW_THREADS;
             if (retval < 0) break;
@@ -1369,7 +1369,7 @@ PyRabbitMQ_Connection_queue_bind(PyRabbitMQ_Connection *self,
                         PyString_AS_AMQBYTES(routing_key),
                         bargs);
     reply = amqp_get_rpc_reply(self->conn);
-    amqp_maybe_release_buffers(self->conn);
+    amqp_maybe_release_buffers_on_channel(self->conn, channel);
     Py_END_ALLOW_THREADS;
 
     if (PyRabbitMQ_HandleAMQError(self, channel, reply, "queue.bind"))
@@ -1424,7 +1424,7 @@ PyRabbitMQ_Connection_queue_unbind(PyRabbitMQ_Connection *self,
                       PyString_AS_AMQBYTES(routing_key),
                       uargs);
     reply = amqp_get_rpc_reply(self->conn);
-    amqp_maybe_release_buffers(self->conn);
+    amqp_maybe_release_buffers_on_channel(self->conn, channel);
     Py_END_ALLOW_THREADS;
 
     if (PyRabbitMQ_HandleAMQError(self, channel, reply, "queue.unbind"))
@@ -1465,7 +1465,7 @@ PyRabbitMQ_Connection_queue_delete(PyRabbitMQ_Connection *self,
             (amqp_boolean_t)if_empty);
     if (ok == NULL)
         reply = amqp_get_rpc_reply(self->conn);
-    amqp_maybe_release_buffers(self->conn);
+    amqp_maybe_release_buffers_on_channel(self->conn, channel);
     Py_END_ALLOW_THREADS;
 
     if (ok == NULL && PyRabbitMQ_HandleAMQError(self, channel,
@@ -1567,7 +1567,7 @@ PyRabbitMQ_Connection_queue_purge(PyRabbitMQ_Connection *self,
     ok = amqp_queue_purge(self->conn, channel,
                           PyString_AS_AMQBYTES(queue));
     reply = amqp_get_rpc_reply(self->conn);
-    amqp_maybe_release_buffers(self->conn);
+    amqp_maybe_release_buffers_on_channel(self->conn, channel);
     Py_END_ALLOW_THREADS;
 
     if (PyRabbitMQ_HandleAMQError(self, channel, reply, "queue.purge"))
@@ -1661,7 +1661,7 @@ PyRabbitMQ_Connection_exchange_delete(PyRabbitMQ_Connection *self,
                          PyString_AS_AMQBYTES(exchange),
                          (amqp_boolean_t)if_unused);
     reply = amqp_get_rpc_reply(self->conn);
-    amqp_maybe_release_buffers(self->conn);
+    amqp_maybe_release_buffers_on_channel(self->conn, channel);
     Py_END_ALLOW_THREADS;
 
     if (PyRabbitMQ_HandleAMQError(self, channel, reply, "exchange.delete"))
@@ -1723,7 +1723,7 @@ PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
                              (amqp_boolean_t)immediate,
                              &props,
                              bytes);
-    amqp_maybe_release_buffers(self->conn);
+    amqp_maybe_release_buffers_on_channel(self->conn, channel);
     Py_END_ALLOW_THREADS;
 
     if (!PyRabbitMQ_HandleError(ret, "basic.publish")) {
@@ -1831,7 +1831,7 @@ PyRabbitMQ_Connection_basic_cancel(PyRabbitMQ_Connection *self,
     ok = amqp_basic_cancel(self->conn, channel,
                            PyString_AS_AMQBYTES(consumer_tag));
     reply = amqp_get_rpc_reply(self->conn);
-    amqp_maybe_release_buffers(self->conn);
+    amqp_maybe_release_buffers_on_channel(self->conn, channel);
     Py_END_ALLOW_THREADS;
 
     if (PyRabbitMQ_HandleAMQError(self, channel, reply, "basic.cancel"))
@@ -1954,7 +1954,7 @@ PyRabbitMQ_Connection_flow(PyRabbitMQ_Connection *self,
     Py_BEGIN_ALLOW_THREADS;
     ok = amqp_channel_flow(self->conn, channel, (amqp_boolean_t)active);
     reply = amqp_get_rpc_reply(self->conn);
-    amqp_maybe_release_buffers(self->conn);
+    amqp_maybe_release_buffers_on_channel(self->conn, channel);
     Py_END_ALLOW_THREADS;
 
     if (PyRabbitMQ_HandleAMQError(self, channel, reply, "channel.flow"))
@@ -1987,7 +1987,7 @@ PyRabbitMQ_Connection_basic_recover(PyRabbitMQ_Connection *self,
     Py_BEGIN_ALLOW_THREADS;
     ok = amqp_basic_recover(self->conn, channel, (amqp_boolean_t)requeue);
     reply = amqp_get_rpc_reply(self->conn);
-    amqp_maybe_release_buffers(self->conn);
+    amqp_maybe_release_buffers_on_channel(self->conn, channel);
     Py_END_ALLOW_THREADS;
 
     if (PyRabbitMQ_HandleAMQError(self, channel, reply, "basic.recover"))
