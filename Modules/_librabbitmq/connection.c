@@ -1212,7 +1212,7 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
     while (1) {
         if (!piggyback) {
             Py_BEGIN_ALLOW_THREADS;
-            amqp_maybe_release_buffers_on_channel(conn, channel);
+            amqp_maybe_release_buffers(conn);
             retval = amqp_simple_wait_frame(conn, &frame);
             Py_END_ALLOW_THREADS;
             if (retval < 0) break;
