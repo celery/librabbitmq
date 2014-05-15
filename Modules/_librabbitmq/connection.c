@@ -558,11 +558,11 @@ AMQTable_toPyDict(amqp_table_t *table)
             }
 
             key = AMQTable_TO_PYKEY(table, i);
-            if (value)
-                PyDICT_SETKV_DECREF(dict, key, value);
-            else
+            if (value == Py_None || value == NULL)
                 /* unsupported type */
                 PyDICT_SETNONE_DECREF(dict, key);
+            else
+                PyDICT_SETKV_DECREF(dict, key, value);
 
         }
     }
