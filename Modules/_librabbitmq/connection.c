@@ -105,7 +105,7 @@ void PyRabbitMQ_SetErr_UnexpectedHeader(amqp_frame_t*);
 int PyRabbitMQ_Not_Connected(PyRabbitMQ_Connection *);
 
 static amqp_table_t PyDict_ToAMQTable(amqp_connection_state_t, PyObject *, amqp_pool_t *);
-static amqp_array_t PyList_ToAMQArray(amqp_connection_state_t, PyObject *, amqp_pool_t *);
+static amqp_array_t PyIter_ToAMQArray(amqp_connection_state_t, PyObject *, amqp_pool_t *);
 
 static PyObject* AMQTable_toPyDict(amqp_table_t *table);
 static PyObject* AMQArray_toPyList(amqp_array_t *array);
@@ -264,7 +264,7 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
             /* List */
             AMQTable_SetArrayValue(&dst,
                     PyString_AS_AMQBYTES(dkey),
-                    PyList_ToAMQArray(conn, dvalue, pool));
+                    PyIter_ToAMQArray(conn, dvalue, pool));
         }
         else if (PyLong_Check(dvalue) || PyInt_Check(dvalue)) {
             /* Int | Long */
@@ -314,67 +314,73 @@ error:
 }
 
 static amqp_array_t
-PyList_ToAMQArray(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool)
+PyIter_ToAMQArray(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool)
 {
-    PyObject *dvalue = NULL;
-    PY_SIZE_TYPE size = 0;
     PY_SIZE_TYPE pos = 0;
     uint64_t clong_value = 0;
     int is_unicode = 0;
     amqp_array_t dst = AMQP_EMPTY_ARRAY;
 
-    size = PyList_Size(src);
+    PY_SIZE_TYPE size = PySequence_Size(src);
+    if (size == -1) return dst;
 
-    /* allocate new array */
+    PyObject *iterator = PyObject_GetIter(src);
+    if (iterator == NULL) return dst;
+    PyObject *item = NULL;
+
+    /* allocate new amqp array */
     dst.num_entries = 0;
     dst.entries = amqp_pool_alloc(pool, size * sizeof(amqp_field_value_t));
-    for (pos = 0; pos < size; ++pos) {
 
-        dvalue = PyList_GetItem(src, pos);
-
-        if (dvalue == Py_None) {
+    while (item = PyIter_Next(iterator)) {
+        if (item == Py_None) {
             /* None */
             AMQArray_SetNilValue(&dst);
         }
-        else if (PyDict_Check(dvalue)) {
+        else if (PyDict_Check(item)) {
             /* Dict */
-            AMQArray_SetTableValue(&dst,
-                    PyDict_ToAMQTable(conn, dvalue, pool));
+            AMQArray_SetTableValue(
+                &dst, PyDict_ToAMQTable(conn, item, pool));
         }
-        else if (PyList_Check(dvalue)) {
+        else if (PyList_Check(item) || PyTuple_Check(item)) {
             /* List */
-            AMQArray_SetArrayValue(&dst,
-                    PyList_ToAMQArray(conn, dvalue, pool));
+            AMQArray_SetArrayValue(
+                &dst, PyIter_ToAMQArray(conn, item, pool));
         }
-        else if (PyLong_Check(dvalue) || PyInt_Check(dvalue)) {
+        else if (PyLong_Check(item) || PyInt_Check(item)) {
             /* Int | Long */
-            clong_value = (int64_t)PyLong_AsLong(dvalue);
+            clong_value = (int64_t)PyLong_AsLong(item);
             AMQArray_SetIntValue(&dst, clong_value);
         }
         else {
             /* String | Unicode */
-            is_unicode = PyUnicode_Check(dvalue);
-            if (is_unicode || PyString_Check(dvalue)) {
+            is_unicode = PyUnicode_Check(item);
+            if (is_unicode || PyString_Check(item)) {
                 if (is_unicode) {
-                    if ((dvalue = PyUnicode_AsASCIIString(dvalue)) == NULL)
-                        goto error;
+                    if ((item = PyUnicode_AsASCIIString(item)) == NULL)
+                        goto item_error;
                 }
-                AMQArray_SetStringValue(&dst,
-                        PyString_AS_AMQBYTES(dvalue));
+                AMQArray_SetStringValue(
+                    &dst, PyString_AS_AMQBYTES(item));
             }
             else {
                 /* unsupported type */
                 PyErr_Format(PyExc_ValueError,
                     "Array member at index %lu, %s, is of an unsupported type",
-                    pos, PyObject_REPR(dvalue));
-                goto error;
+                    pos, PyObject_REPR(item));
+                goto item_error;
             }
         }
+        Py_XDECREF(item);
     }
+
     return dst;
+item_error:
+    Py_XDECREF(item);
 error:
+    Py_XDECREF(iterator);
     assert(PyErr_Occurred());
-    return AMQP_EMPTY_ARRAY;
+    return dst;
 }
 
 
