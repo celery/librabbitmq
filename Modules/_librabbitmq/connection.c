@@ -1191,6 +1191,40 @@ finally:
     return retval;
 }
 
+void
+PyRabbitMQ_SetErr_ReceivedFrame(PyRabbitMQ_Connection *self, amqp_frame_t* frame)
+{
+    static char errstr[512];
+
+    switch(frame->payload.method.id) {
+        case AMQP_CHANNEL_CLOSE_METHOD: {
+            amqp_channel_close_t *chanm = (amqp_channel_close_t *)frame->payload.method.decoded;
+            snprintf(errstr, sizeof(errstr),
+                     "channel error %d, message: %.*s",
+                     chanm->reply_code,
+                     (int) chanm->reply_text.len,
+                     (char *) chanm->reply_text.bytes);
+            PyErr_SetString(PyRabbitMQExc_ChannelError, errstr);
+            PyRabbitMQ_revive_channel(self, frame->channel);
+            break;
+        }
+        case AMQP_CONNECTION_CLOSE_METHOD: {
+            amqp_connection_close_t *connm = (amqp_connection_close_t *)frame->payload.method.decoded;
+            snprintf(errstr, sizeof(errstr),
+                "server connection error %d message: %.*s",
+                connm->reply_code,
+                (int) connm->reply_text.len,
+                (char *) connm->reply_text.bytes);
+            PyErr_SetString(PyRabbitMQExc_ConnectionError, errstr);
+            PyRabbitMQ_Connection_close(self);
+            break;
+        }
+        default: {
+            PyErr_SetString(PyRabbitMQExc_ConnectionError, "Bad frame read");
+            break;
+        }
+    }
+}
 
 int
 PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
@@ -1222,9 +1256,8 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
             retval = amqp_simple_wait_frame(conn, &frame);
             Py_END_ALLOW_THREADS;
             if (retval < 0) break;
-            if (frame.frame_type != AMQP_FRAME_METHOD
-                    || frame.payload.method.id != AMQP_BASIC_DELIVER_METHOD)
-                continue;
+            if (frame.frame_type != AMQP_FRAME_METHOD) continue;
+            if (frame.payload.method.id != AMQP_BASIC_DELIVER_METHOD) goto altframe;
 
             delivery_info = PyDict_New();
             deliver = (amqp_basic_deliver_t *)frame.payload.method.decoded;
@@ -1248,6 +1281,7 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
         Py_END_ALLOW_THREADS;
         if (retval < 0) break;
 
+        if (frame.frame_type == AMQP_FRAME_METHOD) goto altframe;
         if (frame.frame_type != AMQP_FRAME_HEADER) {
             PyRabbitMQ_SetErr_UnexpectedHeader(&frame);
             goto finally;
@@ -1270,6 +1304,7 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
             Py_END_ALLOW_THREADS;
             if (retval < 0) break;
 
+            if (frame.frame_type == AMQP_FRAME_METHOD) goto altframe;
             if (frame.frame_type != AMQP_FRAME_BODY) {
                 PyErr_SetString(PyRabbitMQExc_ChannelError,
                     "Expected body, got unexpected frame");
@@ -1319,6 +1354,8 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
     }
     goto finally;
 
+altframe:
+    PyRabbitMQ_SetErr_ReceivedFrame(self, &frame);
 error:
     retval = -1;
 
