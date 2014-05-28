@@ -1215,11 +1215,15 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
 
     memset(&props, 0, sizeof(props));
 
+    printf("rabbitmq recv\n");
+
     while (1) {
         if (!piggyback) {
             Py_BEGIN_ALLOW_THREADS;
             amqp_maybe_release_buffers(conn);
+            printf("+amqp_simple_wait_frame 1\n");
             retval = amqp_simple_wait_frame(conn, &frame);
+            printf("-amqp_simple_wait_frame 1\n");
             Py_END_ALLOW_THREADS;
             if (retval < 0) break;
             if (frame.frame_type != AMQP_FRAME_METHOD
@@ -1328,6 +1332,7 @@ finally:
     Py_XDECREF(propdict);
     Py_XDECREF(delivery_info);
     Py_XDECREF(view);
+    printf("-rabbitmq recv\n");
     return retval;
 }
 

@@ -182,10 +182,12 @@ class Connection(_librabbitmq.Connection):
                                          channel_max=channel_max,
                                          frame_max=frame_max,
                                          heartbeat=heartbeat)
+
         self.channels = {}
         self._avail_channel_ids = array('H', xrange(self.channel_max, 0, -1))
         if not lazy:
             self.connect()
+        print('INIT WITH HEARTBEAT: %r' % (self.heartbeat, ))
 
     def __enter__(self):
         return self
