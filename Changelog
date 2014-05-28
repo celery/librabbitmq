@@ -7,6 +7,26 @@
 .. contents::
     :local:
 
+.. _version-1.5.2:
+
+1.5.2
+=====
+:release-date: 2014-05-28 05:00 P.M UTC
+
+- AMQP Array type now also supports tuples and other iterables.
+
+    Internally the ``PyIter_*`` interface is used instead of ``PyList_*``.
+
+- AMQP arrays and tables now supports :const:`None`.
+
+- ``Channel.queue_declare`` now returns :class:`amqp.protocol.queue_declare_ok_t`.
+
+- ``drain_events`` now handles connection close and channel close frames
+  (Issue #30).
+
+- Now using ``amqp_maybe_release_buffers_on_channel`` for channel based
+  operations so that only the buffers related to that channel is released.
+
 .. _version-1.5.1:
 
 1.5.1
