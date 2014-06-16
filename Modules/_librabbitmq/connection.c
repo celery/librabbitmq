@@ -269,8 +269,10 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
         else if (PyLong_Check(dvalue) || PyInt_Check(dvalue)) {
             /* Int | Long */
             clong_value = (int64_t)PyLong_AsLong(dvalue);
-            if (PyErr_Occurred())
-                goto error;
+
+            if (clong_value == -1)
+              goto error;
+
             AMQTable_SetIntValue(&dst,
                     PyString_AS_AMQBYTES(dkey),
                     clong_value
@@ -278,8 +280,10 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
         }
         else if (PyFloat_Check(dvalue)) {
             cdouble_value = PyFloat_AsDouble(dvalue);
-            if (PyErr_Occurred())
-                goto error;
+
+            if (cdouble_value == -1)
+              goto error;
+
             AMQTable_SetDoubleValue(&dst,
                 PyString_AS_AMQBYTES(dkey),
                     cdouble_value
