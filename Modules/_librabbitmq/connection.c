@@ -39,6 +39,9 @@ _PYRMQ_INLINE void
 AMQTable_SetStringValue(amqp_table_t*, amqp_bytes_t, amqp_bytes_t);
 
 _PYRMQ_INLINE void
+AMQTable_SetBoolValue(amqp_table_t*, amqp_bytes_t, int);
+
+_PYRMQ_INLINE void
 AMQTable_SetIntValue(amqp_table_t *, amqp_bytes_t, int);
 
 _PYRMQ_INLINE void
@@ -161,6 +164,15 @@ AMQTable_SetStringValue(amqp_table_t *table,
 }
 
 _PYRMQ_INLINE void
+AMQTable_SetBoolValue(amqp_table_t *table,
+                      amqp_bytes_t key, int value)
+{
+    amqp_table_entry_t *entry = AMQTable_AddEntry(table, key);
+    entry->value.kind = AMQP_FIELD_KIND_BOOLEAN;
+    entry->value.value.boolean = value;
+}
+
+_PYRMQ_INLINE void
 AMQTable_SetIntValue(amqp_table_t *table,
                      amqp_bytes_t key, int value)
 {
@@ -265,6 +277,17 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
             AMQTable_SetArrayValue(&dst,
                     PyString_AS_AMQBYTES(dkey),
                     PyIter_ToAMQArray(conn, dvalue, pool));
+        }
+        else if (PyBool_Check(dvalue)) {
+          /* Bool */
+          clong_value = 0;  /* default false */
+
+          if (dvalue == Py_True)
+            clong_value = 1;
+
+          AMQTable_SetBoolValue(&dst,
+                                PyString_AS_AMQBYTES(dkey),
+                                clong_value);
         }
         else if (PyLong_Check(dvalue) || PyInt_Check(dvalue)) {
             /* Int | Long */
