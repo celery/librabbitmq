@@ -140,6 +140,7 @@ typedef struct {
     int sockfd;
     int connected;
 
+    PyObject *client_properties;
     PyObject *server_properties;
     PyObject *callbacks;    /* {channel_id: {consumer_tag:callback}} */
 
