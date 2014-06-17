@@ -165,7 +165,7 @@ static PyObject*
 PyRabbitMQ_Connection_fileno(PyRabbitMQ_Connection *);
 
 static PyObject*
-PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *);
+PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *, PyObject *);
 
 static PyObject*
 PyRabbitMQ_Connection_close(PyRabbitMQ_Connection *);
@@ -263,7 +263,7 @@ static PyMethodDef PyRabbitMQ_ConnectionType_methods[] = {
     {"fileno", (PyCFunction)PyRabbitMQ_Connection_fileno,
         METH_NOARGS, "File descriptor number."},
     {"connect", (PyCFunction)PyRabbitMQ_Connection_connect,
-        METH_NOARGS, "Establish connection to the broker."},
+        METH_VARARGS, "Establish connection to the broker."},
     {"_close", (PyCFunction)PyRabbitMQ_Connection_close,
         METH_NOARGS, "Close connection."},
     {"_channel_open", (PyCFunction)PyRabbitMQ_Connection_channel_open,

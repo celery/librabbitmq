@@ -39,6 +39,9 @@ _PYRMQ_INLINE void
 AMQTable_SetStringValue(amqp_table_t*, amqp_bytes_t, amqp_bytes_t);
 
 _PYRMQ_INLINE void
+AMQTable_SetBoolValue(amqp_table_t*, amqp_bytes_t, int);
+
+_PYRMQ_INLINE void
 AMQTable_SetIntValue(amqp_table_t *, amqp_bytes_t, int);
 
 _PYRMQ_INLINE void
@@ -161,6 +164,15 @@ AMQTable_SetStringValue(amqp_table_t *table,
 }
 
 _PYRMQ_INLINE void
+AMQTable_SetBoolValue(amqp_table_t *table,
+                      amqp_bytes_t key, int value)
+{
+    amqp_table_entry_t *entry = AMQTable_AddEntry(table, key);
+    entry->value.kind = AMQP_FIELD_KIND_BOOLEAN;
+    entry->value.value.boolean = value;
+}
+
+_PYRMQ_INLINE void
 AMQTable_SetIntValue(amqp_table_t *table,
                      amqp_bytes_t key, int value)
 {
@@ -266,11 +278,24 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
                     PyString_AS_AMQBYTES(dkey),
                     PyIter_ToAMQArray(conn, dvalue, pool));
         }
+        else if (PyBool_Check(dvalue)) {
+          /* Bool */
+          clong_value = 0;  /* default false */
+
+          if (dvalue == Py_True)
+            clong_value = 1;
+
+          AMQTable_SetBoolValue(&dst,
+                                PyString_AS_AMQBYTES(dkey),
+                                clong_value);
+        }
         else if (PyLong_Check(dvalue) || PyInt_Check(dvalue)) {
             /* Int | Long */
             clong_value = (int64_t)PyLong_AsLong(dvalue);
-            if (PyErr_Occurred())
-                goto error;
+
+            if (clong_value == -1)
+              goto error;
+
             AMQTable_SetIntValue(&dst,
                     PyString_AS_AMQBYTES(dkey),
                     clong_value
@@ -278,8 +303,10 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
         }
         else if (PyFloat_Check(dvalue)) {
             cdouble_value = PyFloat_AsDouble(dvalue);
-            if (PyErr_Occurred())
-                goto error;
+
+            if (cdouble_value == -1)
+              goto error;
+
             AMQTable_SetDoubleValue(&dst,
                 PyString_AS_AMQBYTES(dkey),
                     cdouble_value
@@ -984,11 +1011,18 @@ PyRabbitMQ_Connection_fileno(PyRabbitMQ_Connection *self)
  * Connection.connect()
  */
 static PyObject*
-PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self)
+PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self, PyObject *args)
 {
     int status;
     amqp_socket_t *socket = NULL;
     amqp_rpc_reply_t reply;
+    PyObject *client_properties;
+    amqp_pool_t pool;
+    amqp_table_t properties;
+
+    if(!PyArg_ParseTuple(args, "|O", &client_properties)) {
+      goto bail;
+    }
 
     if (self->connected) {
         PyErr_SetString(PyRabbitMQExc_ConnectionError, "Already connected");
@@ -1012,12 +1046,25 @@ PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self)
 
     Py_BEGIN_ALLOW_THREADS;
     self->sockfd = amqp_socket_get_sockfd(socket);
-    reply = amqp_login(self->conn, self->virtual_host, self->channel_max,
-                       self->frame_max, self->heartbeat,
-                       AMQP_SASL_METHOD_PLAIN, self->userid, self->password);
+
+    if (PyDict_Check(client_properties)) {
+      init_amqp_pool(&pool, self->frame_max);
+      properties = PyDict_ToAMQTable(self->conn, client_properties, &pool);
+
+      reply = amqp_login_with_properties(self->conn, self->virtual_host, self->channel_max,
+                                         self->frame_max, self->heartbeat,
+                                         &properties,
+                                         AMQP_SASL_METHOD_PLAIN, self->userid, self->password);
+    } else {
+      reply = amqp_login(self->conn, self->virtual_host, self->channel_max,
+                         self->frame_max, self->heartbeat,
+                         AMQP_SASL_METHOD_PLAIN, self->userid, self->password);
+    }
+
     Py_END_ALLOW_THREADS;
+
     if (PyRabbitMQ_HandleAMQError(self, 0, reply, "Couldn't log in"))
-        goto bail;
+      goto bail;
 
     /* after tune */
     self->connected = 1;
