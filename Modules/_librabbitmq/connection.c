@@ -1667,7 +1667,7 @@ PyRabbitMQ_Connection_exchange_declare(PyRabbitMQ_Connection *self,
                           PyString_AS_AMQBYTES(type),
                           (amqp_boolean_t)passive,
                           (amqp_boolean_t)durable,
-                          eargs
+                          0, 0, eargs
     );
     reply = amqp_get_rpc_reply(self->conn);
     Py_END_ALLOW_THREADS;
