@@ -79,7 +79,7 @@ flakediag:
 	-$(MAKE) flakecheck
 
 flakepluscheck:
-	flakeplus celery --2.6
+	flakeplus librabbitmq
 
 flakeplusdiag:
 	-$(MAKE) flakepluscheck

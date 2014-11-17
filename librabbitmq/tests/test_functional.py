@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+from __future__ import with_statement
+
 import socket
 import unittest2 as unittest
 
@@ -15,9 +18,10 @@ class test_Channel(unittest.TestCase):
         self._queue_declare()
 
     def test_send_message(self):
-        message = Message('the quick brown fox jumps over the lazy dog',
-                properties=dict(content_type='application/json',
-                                content_encoding='utf-8'))
+        message = Message(
+            'the quick brown fox jumps over the lazy dog',
+            properties=dict(content_type='application/json',
+                            content_encoding='utf-8'))
         self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
         self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
         self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
@@ -35,9 +39,10 @@ class test_Channel(unittest.TestCase):
         self.channel.queue_bind(TEST_QUEUE, TEST_QUEUE, TEST_QUEUE)
 
     def test_basic_get_ack(self):
-        message = Message('the quick brown fox jumps over the lazy dog',
-                properties=dict(content_type='application/json',
-                                content_encoding='utf-8'))
+        message = Message(
+            'the quick brown fox jumps over the lazy dog',
+            properties=dict(content_type='application/json',
+                            content_encoding='utf-8'))
         self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
         self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
         self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
@@ -97,8 +102,8 @@ class test_Channel(unittest.TestCase):
         self.channel.basic_consume(TEST_QUEUE, callback=cb)
         self.connection.drain_events(timeout=0.1)
 
-        self.assertRaises(socket.timeout,
-                self.connection.drain_events, timeout=0.1)
+        with self.assertRaises(socket.timeout):
+            self.connection.drain_events(timeout=0.1)
         self.assertEquals(len(messages), 1)
 
     def tearDown(self):
@@ -110,6 +115,7 @@ class test_Channel(unittest.TestCase):
                 self.connection.close()
             except ConnectionError:
                 pass
+
 
 class test_Delete(unittest.TestCase):
 
@@ -124,10 +130,11 @@ class test_Delete(unittest.TestCase):
         """Test that we can declare a channel delete it, and then declare with
         different properties"""
 
-        res = self.channel.exchange_declare(self.TEST_QUEUE, 'direct')
-        res = self.channel.queue_declare(self.TEST_QUEUE)
-        res = self.channel.queue_bind(self.TEST_QUEUE, self.TEST_QUEUE,
-                                self.TEST_QUEUE)
+        self.channel.exchange_declare(self.TEST_QUEUE, 'direct')
+        self.channel.queue_declare(self.TEST_QUEUE)
+        self.channel.queue_bind(
+            self.TEST_QUEUE, self.TEST_QUEUE, self.TEST_QUEUE,
+        )
 
         # Delete the queue
         self.channel.queue_delete(self.TEST_QUEUE)
@@ -151,9 +158,10 @@ class test_Delete(unittest.TestCase):
 
         self.channel.basic_publish(message, self.TEST_QUEUE, self.TEST_QUEUE)
 
-        self.assertRaises(ChannelError, self.channel.queue_delete,
-                          self.TEST_QUEUE, if_empty=True)
-        #We need to make a new channel after a ChannelError
+        with self.assertRaises(ChannelError):
+            self.channel.queue_delete(self.TEST_QUEUE, if_empty=True)
+
+        # We need to make a new channel after a ChannelError
         self.channel = self.connection.channel()
 
         x = self.channel.basic_get(self.TEST_QUEUE)
