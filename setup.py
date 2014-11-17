@@ -223,7 +223,7 @@ setup(
     packages=packages,
     cmdclass=cmdclass,
     install_requires=[
-        'amqp>=1.2.1',
+        'amqp>=1.4.6',
     ],
     ext_modules=ext_modules,
     classifiers=[

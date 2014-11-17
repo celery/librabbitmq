@@ -22,7 +22,7 @@ __all__ = ['Connection', 'Message', 'ConnectionError', 'ChannelError']
 
 class Message(object):
 
-    def __init__(self, channel, properties, delivery_info, body):
+    def __init__(self, channel, properties, delivery_info={}, body=''):
         self.channel = channel
         self.properties = properties
         self.delivery_info = delivery_info
