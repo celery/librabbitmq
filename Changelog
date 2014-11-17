@@ -7,6 +7,18 @@
 .. contents::
     :local:
 
+.. _version-1.6.0:
+
+1.6.0
+=====
+:release-date: 2014-11-17 02:00 P.M UTC
+
+- Bundles ``rabbitmq-c`` 0.5.3dev (185ce081e3efc846b476995b7da7297bb0eec82c)
+
+- Bundles ``rabbitmq-codegen`` 3.4.1.
+
+- Now builds on OS X Yosemite.
+
 .. _version-1.5.2:
 
 1.5.2
