@@ -1,7 +1,11 @@
+# Building
 RABBIT_DIR=rabbitmq-c
 CODEGEN_DIR=rabbitmq-codegen
 RABBIT_TARGET=clib
 RABBIT_DIST=rabbitmq-c-0.5.3
+
+# Distribuitions tools
+PYTHON=python
 
 
 all: build
@@ -47,7 +51,7 @@ pyclean:
 
 clean: pyclean rabbitmq-clean
 
-distclean: pyclean rabbitmq-distclean
+distclean: pyclean rabbitmq-distclean removepyc
 	-rm -rf dist
 	-rm -rf clib
 	-rm -f erl_crash.dump
@@ -64,3 +68,38 @@ dist: rabbitmq-c $(RABBIT_TARGET)
 rebuild:
 	python setup.py build
 	python setup.py install
+
+
+# Distro tools
+
+flakecheck:
+	flake8 librabbitmq setup.py
+
+flakediag:
+	-$(MAKE) flakecheck
+
+flakepluscheck:
+	flakeplus celery --2.6
+
+flakeplusdiag:
+	-$(MAKE) flakepluscheck
+
+flakes: flakediag flakeplusdiag
+
+test:
+	nosetests -xv librabbitmq.tests
+
+cov:
+	nosetests -xv librabbitmq.tests --with-coverage --cover-html --cover-branch
+
+removepyc:
+	-find . -type f -a \( -name "*.pyc" -o -name "*$$py.class" \) | xargs rm
+	-find . -type d -name "__pycache__" | xargs rm -r
+
+gitclean:
+	git clean -xdn
+
+gitcleanforce:
+	git clean -xdf
+
+distcheck: flakecheck test gitclean
