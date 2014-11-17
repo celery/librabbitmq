@@ -7,6 +7,15 @@
 .. contents::
     :local:
 
+.. _version-1.6.1:
+
+1.6.1
+=====
+:release-date: 2014-11-17 02:45 P.M UTC
+
+- ``setup.py install`` is now forced to always call ``setup.py build`` first.
+
+
 .. _version-1.6.0:
 
 1.6.0
