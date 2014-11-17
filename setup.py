@@ -202,6 +202,15 @@ if not goahead:
     cmdclass = {}
     packages = []
 
+
+# 'install doesn't always call build for some reason
+if 'install' in sys.argv and 'build' not in sys.argv:
+    _index = sys.argv.index('install')
+    sys.argv[:] = (
+        sys.argv[:_index] + ['build', 'install'] + sys.argv[_index + 1:]
+    )
+
+
 setup(
     name='librabbitmq',
     version=version,
