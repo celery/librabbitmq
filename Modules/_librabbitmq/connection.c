@@ -1340,11 +1340,14 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
                  *buf++ = *bufp++, j++);
         }
         if (p) {
-            if (body_target && !payload) //We expected content, got none
-                goto error;
-            else if (!payload) //We expected no content, return emptystring
+            if (!payload) {
+                /* expected content, got none */
+                if (body_target) goto error;
+
+                /* did not expect content, return empty string */
                 payload = PyString_FromStringAndSize(NULL, 0);
-            
+            }
+
             PyDict_SetItemString(p, "properties", propdict);
             PyDict_SetItemString(p, "body", payload);
             PyDict_SetItemString(p, "channel", channel);
