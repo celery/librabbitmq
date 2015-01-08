@@ -86,7 +86,7 @@ Consuming
 ::
 
     >>> def dump_message(message):
-    ...     print("Body:'%s', Proeprties:'%s', DeliveryInfo:'%s'" % (
+    ...     print("Body:'%s', Properties:'%s', DeliveryInfo:'%s'" % (
     ...         message.body, message.properties, message.delivery_info))
     ...     message.ack()
 
