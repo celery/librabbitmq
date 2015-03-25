@@ -17,7 +17,7 @@ def senv(*k__v, **kwargs):
     for k, v in k__v:
         prev = restore[k] = os.environ.get(k)
         os.environ[k] = (prev + sep if prev else '') + str(v)
-    return dict((k, v) for k, v in restore.iteritems() if v is not None)
+    return dict((k, v) for k, v in restore.items() if v is not None)
 
 
 def codegen():
@@ -31,8 +31,8 @@ def codegen():
     restore = senv(('PYTHONPATH', SPECPATH()), sep=':')
     try:
         for command in commands:
-            print('- generating %r' % command[-1])
-            print(' '.join(command))
+            print(('- generating %r' % command[-1]))
+            print((' '.join(command)))
             os.system(' '.join(command))
     finally:
         os.environ.update(restore)
@@ -68,10 +68,10 @@ def create_builder():
     sys.argv[1:] = unprocessed
 
     incdirs.append(LRMQSRC())
-    PyC_files = map(PYCP, [
+    PyC_files = list(map(PYCP, [
         'connection.c',
-    ])
-    librabbit_files = map(LRMQSRC, [
+    ]))
+    librabbit_files = list(map(LRMQSRC, [
         'amqp_api.c',
         'amqp_connection.c',
         'amqp_consumer.c',
@@ -83,7 +83,7 @@ def create_builder():
         'amqp_tcp_socket.c',
         'amqp_timer.c',
         'amqp_url.c',
-    ])
+    ]))
 
     incdirs.append(LRMQDIST())  # for config.h
 
@@ -183,13 +183,13 @@ is_pypy = hasattr(sys, 'pypy_version_info')
 is_py3k = sys.version_info[0] == 3
 is_win = platform.system() == 'Windows'
 is_linux = platform.system() == 'Linux'
-if is_jython or is_pypy or is_py3k or is_win:
+if is_jython or is_pypy or is_win:
     pass
 elif find_make():
     try:
         librabbitmq_ext, build = create_builder()
-    except Exception, exc:
-        print('Could not create builder: %r' % (exc, ))
+    except Exception as exc:
+        print(('Could not create builder: %r' % (exc, )))
         raise
     else:
         goahead = True

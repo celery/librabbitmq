@@ -25,7 +25,7 @@
 #  define FROM_FORMAT PyUnicode_FromFormat
 #  define PyInt_FromLong PyLong_FromLong
 #  define PyInt_FromSsize_t PyLong_FromSsize_t
-#  define PyString_INTERN_FROM_STRING PyString_FromString
+#  define PyString_INTERN_FROM_STRING PyUnicode_FromString
 #else                            /* 2.x */
 #  define FROM_FORMAT PyString_FromFormat
 #  define PyString_INTERN_FROM_STRING PyString_InternFromString
@@ -69,7 +69,7 @@
     } while(0)
 
 #define PySTRING_FROM_AMQBYTES(member)                              \
-        PyString_FromStringAndSize(member.bytes, member.len);       \
+        PyBytes_FromStringAndSize(member.bytes, member.len);       \
 
 #define AMQTable_TO_PYKEY(table, i)                                 \
         PySTRING_FROM_AMQBYTES(table->entries[i].key)
@@ -83,7 +83,7 @@ _PYRMQ_INLINE PyObject* Maybe_Unicode(PyObject *);
 
 #if defined(__C99__) || defined(__GNUC__)
 #  define PyString_AS_AMQBYTES(s)                                   \
-      (amqp_bytes_t){Py_SIZE(s), (void *)PyString_AS_STRING(s)}
+      (amqp_bytes_t){Py_SIZE(s), (void *)PyBytes_AsString(s)}
 #else
 _PYRMQ_INLINE amqp_bytes_t PyString_AS_AMQBYTES(PyObject *);
 _PYRMQ_INLINE amqp_bytes_t
@@ -91,8 +91,8 @@ PyString_AS_AMQBYTES(PyObject *s)
 {
     amqp_bytes_t ret;
     ret.len = Py_SIZE(s);
-    ret.bytes = (void *)PyString_AS_STRING(s);
-    /*{Py_SIZE(s), (void *)PyString_AS_STRING(s)};*/
+    ret.bytes = (void *)PyBytes_AsString(s);
+    /*{Py_SIZE(s), (void *)PyBytes_AsString(s)};*/
     return ret;
 }
 #endif
@@ -336,8 +336,7 @@ static PyTypeObject PyRabbitMQ_ConnectionType = {
     /* tp_getattro       */ 0,
     /* tp_setattro       */ 0,
     /* tp_as_buffer      */ 0,
-    /* tp_flags          */ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE |
-                            Py_TPFLAGS_HAVE_WEAKREFS,
+    /* tp_flags          */ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
     /* tp_doc            */ PyRabbitMQ_ConnectionType_doc,
     /* tp_traverse       */ 0,
     /* tp_clear          */ 0,
