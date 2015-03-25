@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+
 
 import itertools
 
@@ -43,7 +43,7 @@ class Channel(object):
     def __init__(self, connection, channel_id):
         self.connection = connection
         self.channel_id = channel_id
-        self.next_consumer_tag = itertools.count(1).next
+        self.next_consumer_tag = itertools.count(1).__next__
         self.no_ack_consumers = set()
 
     def __enter__(self):
@@ -194,7 +194,7 @@ class Connection(_librabbitmq.Connection):
             frame_max=frame_max, heartbeat=heartbeat,
         )
         self.channels = {}
-        self._avail_channel_ids = array('H', xrange(self.channel_max, 0, -1))
+        self._avail_channel_ids = array('H', range(self.channel_max, 0, -1))
         if not lazy:
             self.connect()
 
