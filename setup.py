@@ -132,7 +132,6 @@ def create_builder():
                     vars[key] = vars[key].replace('-mno-fused-madd', '')
                     vars[key] = vars[key].replace(
                         '-isysroot /Developer/SDKs/MacOSX10.6.sdk', '')
-                    vars[key] = vars[key].replace('-Wall', '')
                 restore = senv(
                     ('CFLAGS', vars['c']),
                     ('LDFLAGS', vars['ld']),
