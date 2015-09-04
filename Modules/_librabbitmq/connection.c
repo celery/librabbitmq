@@ -581,7 +581,7 @@ AMQArray_toPyList(amqp_array_t *array)
 {
     register PyObject *value = NULL;
     PyObject *list = NULL;
-    list = PyList_New(array->num_entries);
+    list = PyList_New((PY_SIZE_TYPE) array->num_entries);
 
     if (array) {
         int i;
@@ -1583,7 +1583,7 @@ PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *self,
 
     if ((ret = PyTuple_New(3)) == NULL) goto bail;
     PyTuple_SET_ITEM(ret, 0, PyString_FromStringAndSize(ok->queue.bytes,
-                                                        ok->queue.len));
+                                                        (PY_SIZE_TYPE)ok->queue.len));
     PyTuple_SET_ITEM(ret, 1, PyInt_FromLong((long)ok->message_count));
     PyTuple_SET_ITEM(ret, 2, PyInt_FromLong((long)ok->consumer_count));
     return ret;
@@ -1737,7 +1737,7 @@ PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
     unsigned int immediate = 0;
 
     char *body_buf = NULL;
-    int *body_size = 0;
+    PY_SIZE_TYPE body_size = 0;
 
     int ret = 0;
     amqp_basic_properties_t props;
