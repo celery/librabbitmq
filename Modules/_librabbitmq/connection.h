@@ -1,6 +1,7 @@
 #ifndef __PYLIBRABBIT_CONNECTION_H__
 #define __PYLIBRABBIT_CONNECTION_H__
 
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <structmember.h>
 
@@ -11,7 +12,6 @@
 #  define Py_SIZE(ob)     (((PyVarObject*)(ob))->ob_size)
 #endif
 #if PY_VERSION_HEX >= 0x02060000 /* 2.6 and up */
-#  define PY_SSIZE_T_CLEAN
 #  define PY_SIZE_TYPE        Py_ssize_t
 #  define PyLong_FROM_SSIZE_T PyLong_FromSsize_t
 #  define PyLong_AS_SSIZE_T   PyLong_AsSsize_t
@@ -69,7 +69,7 @@
     } while(0)
 
 #define PySTRING_FROM_AMQBYTES(member)                              \
-        PyString_FromStringAndSize(member.bytes, member.len);       \
+        PyString_FromStringAndSize(member.bytes, (PY_SIZE_TYPE)member.len);       \
 
 #define AMQTable_TO_PYKEY(table, i)                                 \
         PySTRING_FROM_AMQBYTES(table->entries[i].key)
