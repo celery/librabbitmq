@@ -1737,7 +1737,7 @@ PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
     unsigned int immediate = 0;
 
     char *body_buf = NULL;
-    int *body_size = 0;
+    uint32_t body_size = 0;
 
     int ret = 0;
     amqp_basic_properties_t props;
