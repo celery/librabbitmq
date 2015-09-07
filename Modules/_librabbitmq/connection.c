@@ -349,7 +349,7 @@ PyIter_ToAMQArray(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
         }
         else if (PyLong_Check(item) || PyInt_Check(item)) {
             /* Int | Long */
-            clong_value = (int64_t)PyLong_AsLong(item);
+            clong_value = (int64_t)PyLong_AsLongLong(item);
             AMQArray_SetIntValue(&dst, clong_value);
         }
         else {
@@ -732,7 +732,7 @@ amqp_basic_deliver_to_PyDict(PyObject *dest,
     PyObject *value = NULL;
 
     /* -- delivery_tag (PyInt)                               */
-    value = PyLong_FROM_SSIZE_T((PY_SIZE_TYPE)delivery_tag);
+    value = PyLong_FromLongLong(delivery_tag);
     PyDICT_SETSTR_DECREF(dest, "delivery_tag", value);
 
     /* -- exchange (PyString)                                */
@@ -1233,8 +1233,8 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
     amqp_frame_t frame;
     amqp_basic_deliver_t *deliver;
     amqp_basic_properties_t *props;
-    size_t body_target;
-    size_t body_received;
+    PY_SIZE_TYPE body_target;
+    PY_SIZE_TYPE body_received;
     PyObject *channel = NULL;
     PyObject *consumer_tag = NULL;
     PyObject *delivery_info = NULL;
@@ -1288,7 +1288,7 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
         }
 
         /* channel */
-        channel = PyInt_FromLong((long)frame.channel);
+        channel = PyInt_FromLong((unsigned long)frame.channel);
 
         /* properties */
         props = (amqp_basic_properties_t *)frame.payload.properties.decoded;
