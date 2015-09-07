@@ -2111,6 +2111,7 @@ PyRabbitMQ_Connection_basic_get(PyRabbitMQ_Connection *self,
     amqp_basic_get_ok_t *ok = NULL;
     PyObject *p = NULL;
     PyObject *delivery_info = NULL;
+    PyObject *message_count = NULL;
 
     if (PyRabbitMQ_Not_Connected(self))
         goto bail;
@@ -2141,6 +2142,11 @@ PyRabbitMQ_Connection_basic_get(PyRabbitMQ_Connection *self,
                                  ok->exchange,
                                  ok->routing_key,
                                  ok->redelivered);
+    /* add in the message_count */
+    message_count = PyLong_FromLong(ok->message_count);
+    PyDict_SetItemString(delivery_info, "message_count", message_count);
+    Py_XDECREF(message_count);
+    
     if (amqp_data_in_buffer(self->conn)) {
         if (PyRabbitMQ_recv(self, p, self->conn, 1) < 0) {
             if (!PyErr_Occurred())
