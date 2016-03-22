@@ -935,6 +935,19 @@ PyRabbitMQ_ConnectionType_dealloc(PyRabbitMQ_Connection *self)
 {
     if (self->weakreflist != NULL)
         PyObject_ClearWeakRefs((PyObject*)self);
+
+    if (self->hostname != NULL)
+      PyMem_Free(self->hostname);
+
+    if (self->userid != NULL)
+      PyMem_Free(self->userid);
+
+    if (self->password != NULL)
+      PyMem_Free(self->password);
+
+    if (self->virtual_host != NULL)
+      PyMem_Free(self->virtual_host);
+
     Py_XDECREF(self->callbacks);
     Py_XDECREF(self->client_properties);
     Py_XDECREF(self->server_properties);
@@ -961,10 +974,11 @@ PyRabbitMQ_ConnectionType_init(PyRabbitMQ_Connection *self,
         "client_properties",
         NULL
     };
-    char *hostname = "localhost";
-    char *userid = "guest";
-    char *password = "guest";
-    char *virtual_host = "/";
+    char *hostname;
+    char *userid;
+    char *password;
+    char *virtual_host;
+
     int channel_max = 0xffff;
     int frame_max = 131072;
     int heartbeat = 0;
@@ -977,10 +991,20 @@ PyRabbitMQ_ConnectionType_init(PyRabbitMQ_Connection *self,
         return -1;
     }
 
-    self->hostname = hostname;
-    self->userid = userid;
-    self->password = password;
-    self->virtual_host = virtual_host;
+    self->hostname = PyMem_Malloc(strlen(hostname) + 1);
+    self->userid = PyMem_Malloc(strlen(userid) + 1);
+    self->password = PyMem_Malloc(strlen(password) + 1);
+    self->virtual_host = PyMem_Malloc(strlen(virtual_host) + 1);
+
+    if (self->hostname == NULL || self->userid == NULL || self->password == NULL || self->virtual_host == NULL) {
+        return PyErr_NoMemory();
+    }
+
+    strcpy(self->hostname, hostname);
+    strcpy(self->userid, userid);
+    strcpy(self->password, password);
+    strcpy(self->virtual_host, virtual_host);
+
     self->port = port;
     self->channel_max = channel_max;
     self->frame_max = frame_max;
