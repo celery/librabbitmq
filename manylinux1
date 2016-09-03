@@ -1,0 +1,2 @@
+docker run --rm -v `pwd`:/workspace:z quay.io/pypa/manylinux1_x86_64  /workspace/build-manylinux1-wheels.sh
+
