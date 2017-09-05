@@ -16,7 +16,7 @@ def senv(*k__v, **kwargs):
     for k, v in k__v:
         prev = restore[k] = os.environ.get(k)
         os.environ[k] = (prev + sep if prev else '') + str(v)
-    return dict((k, v) for k, v in restore.iteritems() if v is not None)
+    return dict((k, v) for k, v in restore.items() if v is not None)
 
 
 def create_builder():
@@ -73,7 +73,7 @@ def create_builder():
 
     librabbitmq_ext = Extension(
         '_librabbitmq',
-        sources=PyC_files + librabbit_files,
+        sources=list(PyC_files) + list(librabbit_files),
         libraries=libs, include_dirs=incdirs,
         library_dirs=libdirs, define_macros=defs,
     )
@@ -159,10 +159,9 @@ packages = []
 goahead = False
 is_jython = sys.platform.startswith('java')
 is_pypy = hasattr(sys, 'pypy_version_info')
-is_py3k = sys.version_info[0] == 3
 is_win = platform.system() == 'Windows'
 is_linux = platform.system() == 'Linux'
-if is_jython or is_pypy or is_py3k or is_win:
+if is_jython or is_pypy or is_win:
     pass
 elif find_make():
     try:
