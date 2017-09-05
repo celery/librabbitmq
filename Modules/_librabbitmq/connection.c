@@ -315,7 +315,7 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
         else {
             /* String | Unicode */
             is_unicode = PyUnicode_Check(dvalue);
-            if (is_unicode || PyString_Check(dvalue)) {
+            if (is_unicode || PyBytes_Check(dvalue)) {
                 if (is_unicode) {
                     if ((dvalue = PyUnicode_AsASCIIString(dvalue)) == NULL)
                         goto error;
@@ -329,7 +329,7 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
                 /* unsupported type */
                 PyErr_Format(PyExc_ValueError,
                     "Table member %s is of an unsupported type",
-                    PyString_AS_STRING(dkey));
+                    PyBytes_AS_STRING(dkey));
                 goto error;
             }
         }
@@ -382,7 +382,7 @@ PyIter_ToAMQArray(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
         else {
             /* String | Unicode */
             is_unicode = PyUnicode_Check(item);
-            if (is_unicode || PyString_Check(item)) {
+            if (is_unicode || PyBytes_Check(item)) {
                 if (is_unicode) {
                     if ((item = PyUnicode_AsASCIIString(item)) == NULL)
                         goto item_error;
@@ -1236,7 +1236,7 @@ PyRabbitMQ_ApplyCallback(PyRabbitMQ_Connection *self,
         goto error;
 
     /* message = self.Message(channel, properties, delivery_info, body) */
-    Message = PyString_FromString("Message");
+    Message = PyBytes_FromString("Message");
     message = PyObject_CallMethodObjArgs((PyObject *)self, Message,
                 channelobj, propdict, delivery_info, view, NULL);
     if (!message)
@@ -1385,11 +1385,11 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
             body_received += frame.payload.body_fragment.len;
             if (!i) {
                 if (body_received < body_target) {
-                    payload = PyString_FromStringAndSize(NULL,
+                    payload = PyBytes_FromStringAndSize(NULL,
                                        (Py_ssize_t)body_target);
                     if (!payload)
                         goto finally;
-                    buf = PyString_AsString(payload);
+                    buf = PyBytes_AsString(payload);
                     if (!buf)
                         goto finally;
                     view = PyBuffer_FromObject(payload, 0,
@@ -1416,7 +1416,7 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
                 if (body_target) goto error;
 
                 /* did not expect content, return empty string */
-                payload = PyString_FromStringAndSize(NULL, 0);
+                payload = PyBytes_FromStringAndSize(NULL, 0);
             }
 
             PyDict_SetItemString(p, "properties", propdict);
@@ -1653,7 +1653,7 @@ PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *self,
         goto bail;
 
     if ((ret = PyTuple_New(3)) == NULL) goto bail;
-    PyTuple_SET_ITEM(ret, 0, PyString_FromStringAndSize(ok->queue.bytes,
+    PyTuple_SET_ITEM(ret, 0, PyBytes_FromStringAndSize(ok->queue.bytes,
                                                         (Py_ssize_t)ok->queue.len));
     PyTuple_SET_ITEM(ret, 1, PyInt_FromLong((long)ok->message_count));
     PyTuple_SET_ITEM(ret, 2, PyInt_FromLong((long)ok->consumer_count));

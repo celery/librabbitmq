@@ -57,7 +57,7 @@
     } while(0)
 
 #define PySTRING_FROM_AMQBYTES(member)                              \
-        PyString_FromStringAndSize(member.bytes, (Py_ssize_t)member.len);       \
+        PyBytes_FromStringAndSize(member.bytes, (Py_ssize_t)member.len);       \
 
 #define AMQTable_TO_PYKEY(table, i)                                 \
         PySTRING_FROM_AMQBYTES(table->entries[i].key)
@@ -71,7 +71,7 @@ _PYRMQ_INLINE PyObject* Maybe_Unicode(PyObject *);
 
 #if defined(__C99__) || defined(__GNUC__)
 #  define PyString_AS_AMQBYTES(s)                                   \
-      (amqp_bytes_t){Py_SIZE(s), (void *)PyString_AS_STRING(s)}
+      (amqp_bytes_t){Py_SIZE(s), (void *)PyBytes_AS_STRING(s)}
 #else
 _PYRMQ_INLINE amqp_bytes_t PyString_AS_AMQBYTES(PyObject *);
 _PYRMQ_INLINE amqp_bytes_t
@@ -79,7 +79,7 @@ PyString_AS_AMQBYTES(PyObject *s)
 {
     amqp_bytes_t ret;
     ret.len = Py_SIZE(s);
-    ret.bytes = (void *)PyString_AS_STRING(s);
+    ret.bytes = (void *)PyBytes_AS_STRING(s);
     /*{Py_SIZE(s), (void *)PyString_AS_STRING(s)};*/
     return ret;
 }
