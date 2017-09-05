@@ -951,7 +951,7 @@ PyRabbitMQ_ConnectionType_dealloc(PyRabbitMQ_Connection *self)
     Py_XDECREF(self->callbacks);
     Py_XDECREF(self->client_properties);
     Py_XDECREF(self->server_properties);
-    self->ob_type->tp_free(self);
+    Py_TYPE(self)->tp_free(self);
 }
 
 
