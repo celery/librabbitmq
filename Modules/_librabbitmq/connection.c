@@ -248,8 +248,8 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
 {
     PyObject *dkey = NULL;
     PyObject *dvalue = NULL;
-    PY_SIZE_TYPE size = 0;
-    PY_SIZE_TYPE pos = 0;
+    Py_ssize_t size = 0;
+    Py_ssize_t pos = 0;
     uint64_t clong_value = 0;
     double cdouble_value = 0.0;
     int is_unicode = 0;
@@ -343,12 +343,12 @@ error:
 static amqp_array_t
 PyIter_ToAMQArray(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool)
 {
-    PY_SIZE_TYPE pos = 0;
+    Py_ssize_t pos = 0;
     uint64_t clong_value = 0;
     int is_unicode = 0;
     amqp_array_t dst = AMQP_EMPTY_ARRAY;
 
-    PY_SIZE_TYPE size = PySequence_Size(src);
+    Py_ssize_t size = PySequence_Size(src);
     if (size == -1) return dst;
 
     PyObject *iterator = PyObject_GetIter(src);
@@ -608,7 +608,7 @@ AMQArray_toPyList(amqp_array_t *array)
 {
     register PyObject *value = NULL;
     PyObject *list = NULL;
-    list = PyList_New((PY_SIZE_TYPE) array->num_entries);
+    list = PyList_New((Py_ssize_t) array->num_entries);
 
     if (array) {
         int i;
@@ -1304,8 +1304,8 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
     amqp_frame_t frame;
     amqp_basic_deliver_t *deliver;
     amqp_basic_properties_t *props;
-    PY_SIZE_TYPE body_target;
-    PY_SIZE_TYPE body_received;
+    Py_ssize_t body_target;
+    Py_ssize_t body_received;
     PyObject *channel = NULL;
     PyObject *consumer_tag = NULL;
     PyObject *delivery_info = NULL;
@@ -1386,14 +1386,14 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
             if (!i) {
                 if (body_received < body_target) {
                     payload = PyString_FromStringAndSize(NULL,
-                                       (PY_SIZE_TYPE)body_target);
+                                       (Py_ssize_t)body_target);
                     if (!payload)
                         goto finally;
                     buf = PyString_AsString(payload);
                     if (!buf)
                         goto finally;
                     view = PyBuffer_FromObject(payload, 0,
-                                   (PY_SIZE_TYPE)body_target);
+                                   (Py_ssize_t)body_target);
                 }
                 else {
                     if (p) {
@@ -1401,7 +1401,7 @@ PyRabbitMQ_recv(PyRabbitMQ_Connection *self, PyObject *p,
                                     frame.payload.body_fragment);
                     } else {
                         view = PyBuffer_FromMemory(bufp,
-                                    (PY_SIZE_TYPE)frame.payload.body_fragment.len);
+                                    (Py_ssize_t)frame.payload.body_fragment.len);
                     }
                     break;
                 }
@@ -1654,7 +1654,7 @@ PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *self,
 
     if ((ret = PyTuple_New(3)) == NULL) goto bail;
     PyTuple_SET_ITEM(ret, 0, PyString_FromStringAndSize(ok->queue.bytes,
-                                                        (PY_SIZE_TYPE)ok->queue.len));
+                                                        (Py_ssize_t)ok->queue.len));
     PyTuple_SET_ITEM(ret, 1, PyInt_FromLong((long)ok->message_count));
     PyTuple_SET_ITEM(ret, 2, PyInt_FromLong((long)ok->consumer_count));
     return ret;
@@ -1808,7 +1808,7 @@ PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
     unsigned int immediate = 0;
 
     char *body_buf = NULL;
-    PY_SIZE_TYPE body_size = 0;
+    Py_ssize_t body_size = 0;
 
     int ret = 0;
     amqp_basic_properties_t props;
@@ -1866,7 +1866,7 @@ static PyObject*
 PyRabbitMQ_Connection_basic_ack(PyRabbitMQ_Connection *self,
                                 PyObject *args)
 {
-    PY_SIZE_TYPE delivery_tag = 0;
+    Py_ssize_t delivery_tag = 0;
     unsigned int channel = 0;
     unsigned int multiple = 0;
     int ret = 0;
@@ -1899,7 +1899,7 @@ bail:
 static PyObject *PyRabbitMQ_Connection_basic_reject(PyRabbitMQ_Connection *self,
                                                     PyObject *args)
 {
-    PY_SIZE_TYPE delivery_tag = 0;
+    Py_ssize_t delivery_tag = 0;
     unsigned int channel = 0;
     unsigned int multiple = 0;
 
@@ -2030,7 +2030,7 @@ PyRabbitMQ_Connection_basic_qos(PyRabbitMQ_Connection *self,
                                 PyObject *args)
 {
     unsigned int channel = 0;
-    PY_SIZE_TYPE prefetch_size = 0;
+    Py_ssize_t prefetch_size = 0;
     unsigned int prefetch_count = 0;
     unsigned int _global = 0;
 

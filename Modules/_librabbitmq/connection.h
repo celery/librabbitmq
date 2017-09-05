@@ -8,18 +8,6 @@
 #include <amqp.h>
 #include <amqp_framing.h>
 
-#if PY_VERSION_HEX < 0x02060000 && !defined(Py_SIZE)
-#  define Py_SIZE(ob)     (((PyVarObject*)(ob))->ob_size)
-#endif
-#if PY_VERSION_HEX >= 0x02060000 /* 2.6 and up */
-#  define PY_SIZE_TYPE        Py_ssize_t
-#  define PyLong_FROM_SSIZE_T PyLong_FromSsize_t
-#  define PyLong_AS_SSIZE_T   PyLong_AsSsize_t
-# else                           /* 2.5 and below */
-#  define PY_SIZE_TYPE        unsigned long
-#  define PyLong_FROM_SSIZE_T PyLong_FromUnsignedLong
-#  define PyLong_AS_SSIZE_T   PyLong_AsUnsignedLong
-#endif
 
 #if PY_VERSION_HEX >= 0x03000000 /* 3.0 and up */
 #  define FROM_FORMAT PyUnicode_FromFormat
@@ -69,7 +57,7 @@
     } while(0)
 
 #define PySTRING_FROM_AMQBYTES(member)                              \
-        PyString_FromStringAndSize(member.bytes, (PY_SIZE_TYPE)member.len);       \
+        PyString_FromStringAndSize(member.bytes, (Py_ssize_t)member.len);       \
 
 #define AMQTable_TO_PYKEY(table, i)                                 \
         PySTRING_FROM_AMQBYTES(table->entries[i].key)
