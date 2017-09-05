@@ -1,8 +1,7 @@
 # Building
 RABBIT_DIR=rabbitmq-c
-CODEGEN_DIR=rabbitmq-codegen
 RABBIT_TARGET=clib
-RABBIT_DIST=rabbitmq-c-0.5.3
+RABBIT_DIST=rabbitmq-c-0.8.0
 
 # Distribuition tools
 PYTHON=python
@@ -10,13 +9,11 @@ PYTHON=python
 all: build
 
 add-submodules:
-	-git submodule add https://github.com/ask/rabbitmq-c.git
-	-git submodule add https://github.com/rabbitmq/rabbitmq-codegen
+	-git submodule add -b v0.8.0 https://github.com/alanxz/rabbitmq-c.git
 
 submodules:
 	git submodule init
 	git submodule update
-	(cd $(RABBIT_DIR); rm -rf codegen; ln -sf ../$(CODEGEN_DIR) ./codegen)
 
 rabbitmq-c: submodules
 	(cd $(RABBIT_DIR); test -f configure || autoreconf -i)
@@ -25,11 +22,9 @@ rabbitmq-c: submodules
 
 rabbitmq-clean:
 	-(cd $(RABBIT_DIR) && make clean)
-	-(cd $(RABBIT_TARGET) && make clean)
 
 rabbitmq-distclean:
 	-(cd $(RABBIT_DIR) && make distclean)
-	-(cd $(RABBIT_TARGET) && make distclean)
 
 clean-build:
 	-rm -rf build
@@ -57,7 +52,7 @@ distclean: pyclean rabbitmq-distclean removepyc
 
 $(RABBIT_TARGET):
 	(test -f config.h || cd $(RABBIT_DIR); ./configure --disable-tools --disable-docs)
-	(cd $(RABBIT_DIR); make distdir)
+	(cd $(RABBIT_DIR); make)
 	mv "$(RABBIT_DIR)/$(RABBIT_DIST)" "$(RABBIT_TARGET)"
 
 
