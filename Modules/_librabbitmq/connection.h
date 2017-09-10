@@ -16,6 +16,7 @@
 
 
 #if PY_VERSION_HEX >= 0x03000000 /* 3.0 and up */
+#  define BUILD_METHOD_NAME PyUnicode_FromString
 #  define FROM_FORMAT PyUnicode_FromFormat
 #  define PyInt_FromLong PyLong_FromLong
 #  define PyInt_AS_LONG PyLong_AsLong
@@ -23,6 +24,7 @@
 #  define PyInt_FromSsize_t PyLong_FromSsize_t
 #  define PyString_INTERN_FROM_STRING PyString_FromString
 #else                            /* 2.x */
+#  define BUILD_METHOD_NAME PyBytes_FromString
 #  define FROM_FORMAT PyString_FromFormat
 #  define PyString_INTERN_FROM_STRING PyString_InternFromString
 #endif

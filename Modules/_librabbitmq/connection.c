@@ -1236,7 +1236,7 @@ PyRabbitMQ_ApplyCallback(PyRabbitMQ_Connection *self,
         goto error;
 
     /* message = self.Message(channel, properties, delivery_info, body) */
-    Message = PyBytes_FromString("Message");
+    Message = BUILD_METHOD_NAME("Message");
     message = PyObject_CallMethodObjArgs((PyObject *)self, Message,
                 channelobj, propdict, delivery_info, view, NULL);
     if (!message)
