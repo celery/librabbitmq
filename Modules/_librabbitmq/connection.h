@@ -8,6 +8,12 @@
 #include <amqp.h>
 #include <amqp_framing.h>
 
+#if PY_MAJOR_VERSION == 2
+# define TP_FLAGS (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_WEAKREFS)
+#else
+# define TP_FLAGS (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE)
+#endif
+
 
 #if PY_VERSION_HEX >= 0x03000000 /* 3.0 and up */
 #  define FROM_FORMAT PyUnicode_FromFormat
@@ -325,8 +331,7 @@ static PyTypeObject PyRabbitMQ_ConnectionType = {
     /* tp_getattro       */ 0,
     /* tp_setattro       */ 0,
     /* tp_as_buffer      */ 0,
-    /* tp_flags          */ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE |
-                            Py_TPFLAGS_HAVE_WEAKREFS,
+    /* tp_flags          */ TP_FLAGS,
     /* tp_doc            */ PyRabbitMQ_ConnectionType_doc,
     /* tp_traverse       */ 0,
     /* tp_clear          */ 0,
