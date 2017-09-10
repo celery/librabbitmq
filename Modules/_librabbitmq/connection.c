@@ -393,8 +393,8 @@ PyIter_ToAMQArray(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
             else {
                 /* unsupported type */
                 PyErr_Format(PyExc_ValueError,
-                    "Array member at index %lu, %s, is of an unsupported type",
-                    pos, PyObject_REPR(item));
+                    "Array member at index %lu, %R, is of an unsupported type",
+                    pos, item);
                 goto item_error;
             }
         }
