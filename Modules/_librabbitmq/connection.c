@@ -1817,7 +1817,7 @@ PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
     if (PyRabbitMQ_Not_Connected(self))
         goto bail;
 
-    if (!PyArg_ParseTuple(args, "It#OOO|II",
+    if (!PyArg_ParseTuple(args, "Is#OOO|II",
             &channel, &body_buf, &body_size, &exchange, &routing_key,
             &propdict, &mandatory, &immediate))
         goto bail;
