@@ -14,6 +14,12 @@
 # define TP_FLAGS (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE)
 #endif
 
+#if PY_MAJOR_VERSION >= 3
+    #define PYRABBITMQ_MOD_INIT(name) PyMODINIT_FUNC PyInit_##name(void)
+#else
+    #define PYRABBITMQ_MOD_INIT(name) PyMODINIT_FUNC init##name(void)
+#endif
+                            
 
 #if PY_VERSION_HEX >= 0x03000000 /* 3.0 and up */
 #  define BUILD_METHOD_NAME PyUnicode_FromString

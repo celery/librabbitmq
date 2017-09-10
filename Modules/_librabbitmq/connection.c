@@ -15,6 +15,9 @@
 #define PYRABBITMQ_CONNECTION_ERROR 0x10
 #define PYRABBITMQ_CHANNEL_ERROR 0x20
 
+#define PYRABBITMQ_MODULE_NAME "_librabbitmq"
+#define PYRABBITMQ_MODULE_DESC "Hand-made wrapper for librabbitmq."
+
 /* ------: Private Prototypes :------------------------------------------- */
 PyMODINIT_FUNC init_librabbitmq(void);
 
@@ -2242,7 +2245,21 @@ static PyMethodDef PyRabbitMQ_functions[] = {
     {NULL, NULL, 0, NULL}
 };
 
-PyMODINIT_FUNC init_librabbitmq(void)
+#if PY_MAJOR_VERSION >= 3
+    static struct PyModuleDef PyRabbitMQ_moduledef = {
+        PyModuleDef_HEAD_INIT,
+        PYRABBITMQ_MODULE_NAME,                /* m_name */
+        PYRABBITMQ_MODULE_DESC,                /* m_doc */
+        -1,                                    /* m_size */
+        PyRabbitMQ_functions,                  /* m_methods */
+        NULL,                                  /* m_reload */
+        NULL,                                  /* m_traverse */
+        NULL,                                  /* m_clear */
+        NULL,                                  /* m_free */
+    };
+#endif
+
+PYRABBITMQ_MOD_INIT(_librabbitmq)
 {
     PyObject *module, *socket_module;
 
@@ -2250,8 +2267,13 @@ PyMODINIT_FUNC init_librabbitmq(void)
         return;
     }
 
-    module = Py_InitModule3("_librabbitmq", PyRabbitMQ_functions,
-            "Hand-made wrapper for librabbitmq.");
+#if PY_MAJOR_VERSION >= 3
+    module = PyModule_Create(&PyRabbitMQ_moduledef);
+#else
+    module = Py_InitModule3(PYRABBITMQ_MODULE_NAME, PyRabbitMQ_functions,
+            PYRABBITMQ_MODULE_DESC);
+#endif
+
     if (module == NULL) {
         return;
     }
@@ -2281,5 +2303,9 @@ PyMODINIT_FUNC init_librabbitmq(void)
             "_librabbitmq.ChannelError", NULL, NULL);
     PyModule_AddObject(module, "ChannelError",
                        (PyObject *)PyRabbitMQExc_ChannelError);
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#else
     return;
+#endif
 }
