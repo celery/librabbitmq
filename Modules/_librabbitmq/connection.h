@@ -87,8 +87,14 @@ buffer_toMemoryView(char *buf, Py_ssize_t buf_len) {
         Py_XDECREF(value);                                          \
     } while(0)
 
-#define PySTRING_FROM_AMQBYTES(member)                              \
-        PyBytes_FromStringAndSize(member.bytes, (Py_ssize_t)member.len);       \
+#if PY_MAJOR_VERSION == 2
+#  define PySTRING_FROM_AMQBYTES(member)                                        \
+        PyString_FromStringAndSize(member.bytes, (Py_ssize_t)member.len);
+#else
+#  define PySTRING_FROM_AMQBYTES(member)                                        \
+        PyUnicode_FromStringAndSize(member.bytes, (Py_ssize_t)member.len);
+#endif
+
 
 #define AMQTable_TO_PYKEY(table, i)                                 \
         PySTRING_FROM_AMQBYTES(table->entries[i].key)
