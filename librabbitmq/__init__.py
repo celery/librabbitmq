@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 
+import sys
 import itertools
+from six.moves import xrange
 
 import _librabbitmq
 
@@ -43,7 +45,10 @@ class Channel(object):
     def __init__(self, connection, channel_id):
         self.connection = connection
         self.channel_id = channel_id
-        self.next_consumer_tag = itertools.count(1).next
+        if sys.version_info.major == 2:
+            self.next_consumer_tag = itertools.count(1).next
+        else:
+            self.next_consumer_tag = itertools.count(1).__next__
         self.no_ack_consumers = set()
 
     def __enter__(self):
