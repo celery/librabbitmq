@@ -1,7 +1,6 @@
 # Building
 RABBIT_DIR=rabbitmq-c
-RABBIT_TARGET=clib
-RABBIT_DIST=rabbitmq-c-0.8.0
+RABBIT_DIST=librabbitmq
 
 # Distribuition tools
 PYTHON=python
@@ -53,7 +52,6 @@ distclean: pyclean rabbitmq-distclean removepyc
 $(RABBIT_TARGET):
 	(test -f config.h || cd $(RABBIT_DIR); ./configure --disable-tools --disable-docs)
 	(cd $(RABBIT_DIR); make)
-	mv "$(RABBIT_DIR)/$(RABBIT_DIST)" "$(RABBIT_TARGET)"
 
 
 dist: rabbitmq-c $(RABBIT_TARGET)
