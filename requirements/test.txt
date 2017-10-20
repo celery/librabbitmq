@@ -1,3 +1,3 @@
-unittest2>=0.4.0
 nose
 mock
+six

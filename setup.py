@@ -195,6 +195,13 @@ if 'bdist_egg' in sys.argv and 'build' not in sys.argv:
         sys.argv[:_index] + ['build', 'bdist_egg'] + sys.argv[_index + 1:]
     )
 
+# 'test doesn't always call build for some reason
+if 'test' in sys.argv and 'build' not in sys.argv:
+    _index = sys.argv.index('test')
+    sys.argv[:] = (
+        sys.argv[:_index] + ['build', 'test'] + sys.argv[_index + 1:]
+    )
+
 setup(
     name='librabbitmq',
     version=version,

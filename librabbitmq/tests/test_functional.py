@@ -1,8 +1,9 @@
 from __future__ import absolute_import
-from __future__ import with_statement
+
+from six.moves import xrange
 
 import socket
-import unittest2 as unittest
+import unittest
 
 from librabbitmq import Message, Connection, ConnectionError, ChannelError
 TEST_QUEUE = 'pyrabbit.testq'
@@ -86,7 +87,7 @@ class test_Channel(unittest.TestCase):
         for i in xrange(100):
             self.connection.drain_events(timeout=0.2)
 
-        self.assertEquals(len(messages), 100)
+        self.assertEqual(len(messages), 100)
 
     def test_timeout(self):
         """Check that our ``drain_events`` call actually times out if
@@ -110,7 +111,7 @@ class test_Channel(unittest.TestCase):
 
         with self.assertRaises(socket.timeout):
             self.connection.drain_events(timeout=0.1)
-        self.assertEquals(len(messages), 1)
+        self.assertEqual(len(messages), 1)
 
     def tearDown(self):
         if self.channel and self.connection.connected:

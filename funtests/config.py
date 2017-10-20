@@ -7,7 +7,7 @@ BROKER_USER = os.environ.get('BROKER_USER', 'guest')
 BROKER_PASSWORD = os.environ.get('BROKER_PASSWORD', 'guest')
 
 from functools import partial
-from unittest2 import TestCase
+from unittest import TestCase
 from uuid import uuid4
 
 
