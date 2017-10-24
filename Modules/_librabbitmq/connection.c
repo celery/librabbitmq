@@ -2264,7 +2264,11 @@ PYRABBITMQ_MOD_INIT(_librabbitmq)
     PyObject *module, *socket_module;
 
     if (PyType_Ready(&PyRabbitMQ_ConnectionType) < 0) {
+    #if PY_MAJOR_VERSION >= 3
+        return NULL;
+    #else
         return;
+    #endif
     }
 
 #if PY_MAJOR_VERSION >= 3
@@ -2275,13 +2279,22 @@ PYRABBITMQ_MOD_INIT(_librabbitmq)
 #endif
 
     if (module == NULL) {
+    #if PY_MAJOR_VERSION >= 3
+        return NULL;
+    #else
         return;
+    #endif
     }
 
     /* Get socket.error */
     socket_module = PyImport_ImportModule("socket");
-    if (!socket_module)
+    if (!socket_module) {
+    #if PY_MAJOR_VERSION >= 3
+        return NULL;
+    #else
         return;
+    #endif
+    }
     PyRabbitMQ_socket_timeout = PyObject_GetAttrString(socket_module, "timeout");
     Py_XDECREF(socket_module);
 
