@@ -1654,8 +1654,7 @@ PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *self,
         goto bail;
 
     if ((ret = PyTuple_New(3)) == NULL) goto bail;
-    PyTuple_SET_ITEM(ret, 0, PyBytes_FromStringAndSize(ok->queue.bytes,
-                                                        (Py_ssize_t)ok->queue.len));
+    PyTuple_SET_ITEM(ret, 0, PySTRING_FROM_AMQBYTES(ok->queue));
     PyTuple_SET_ITEM(ret, 1, PyInt_FromLong((long)ok->message_count));
     PyTuple_SET_ITEM(ret, 2, PyInt_FromLong((long)ok->consumer_count));
     return ret;

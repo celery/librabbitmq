@@ -89,10 +89,10 @@ buffer_toMemoryView(char *buf, Py_ssize_t buf_len) {
 
 #if PY_MAJOR_VERSION == 2
 #  define PySTRING_FROM_AMQBYTES(member)                                        \
-        PyString_FromStringAndSize(member.bytes, (Py_ssize_t)member.len);
+        PyString_FromStringAndSize((member).bytes, (Py_ssize_t)(member).len)
 #else
 #  define PySTRING_FROM_AMQBYTES(member)                                        \
-        PyUnicode_FromStringAndSize(member.bytes, (Py_ssize_t)member.len);
+        PyUnicode_FromStringAndSize((member).bytes, (Py_ssize_t)(member).len)
 #endif
 
 

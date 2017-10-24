@@ -45,7 +45,6 @@ setup(
     build_requires=[
         "nose",
         "nose-cover3",
-        "unittest2",
         "coverage>=3.0",
     ],
     classifiers=[
