@@ -264,7 +264,7 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
     dst.num_entries = 0;
     dst.entries = amqp_pool_alloc(pool, size * sizeof(amqp_table_entry_t));
     while (PyDict_Next(src, &pos, &dkey, &dvalue)) {
-
+        dkey = Maybe_Unicode(dkey);
         if (dvalue == Py_None) {
             /* None */
             AMQTable_SetNilValue(&dst, PyString_AS_AMQBYTES(dkey));
