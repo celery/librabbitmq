@@ -256,7 +256,7 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
     uint64_t clong_value = 0;
     double cdouble_value = 0.0;
     int is_unicode = 0;
-    amqp_table_t dst = AMQP_EMPTY_TABLE;
+    amqp_table_t dst = amqp_empty_table;
 
     size = PyDict_Size(src);
 
@@ -264,7 +264,7 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
     dst.num_entries = 0;
     dst.entries = amqp_pool_alloc(pool, size * sizeof(amqp_table_entry_t));
     while (PyDict_Next(src, &pos, &dkey, &dvalue)) {
-
+        dkey = Maybe_Unicode(dkey);
         if (dvalue == Py_None) {
             /* None */
             AMQTable_SetNilValue(&dst, PyString_AS_AMQBYTES(dkey));
@@ -340,7 +340,7 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
     return dst;
 error:
     assert(PyErr_Occurred());
-    return AMQP_EMPTY_TABLE;
+    return amqp_empty_table;
 }
 
 static amqp_array_t
@@ -349,7 +349,7 @@ PyIter_ToAMQArray(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
     Py_ssize_t pos = 0;
     uint64_t clong_value = 0;
     int is_unicode = 0;
-    amqp_array_t dst = AMQP_EMPTY_ARRAY;
+    amqp_array_t dst = amqp_empty_array;
 
     Py_ssize_t size = PySequence_Size(src);
     if (size == -1) return dst;
@@ -684,7 +684,7 @@ PyDict_to_basic_properties(PyObject *p,
                            amqp_pool_t *pool)
 {
     PyObject *value = NULL;
-    props->headers = AMQP_EMPTY_TABLE;
+    props->headers = amqp_empty_table;
     props->_flags = AMQP_BASIC_HEADERS_FLAG;
 
     if ((value = PyDict_GetItemString(p, "content_type")) != NULL) {
@@ -1461,7 +1461,7 @@ PyRabbitMQ_Connection_queue_bind(PyRabbitMQ_Connection *self,
     PyObject *routing_key = NULL;
     PyObject *arguments = NULL;
 
-    amqp_table_t bargs = AMQP_EMPTY_TABLE;
+    amqp_table_t bargs = amqp_empty_table;
     amqp_pool_t *channel_pool = NULL;
     amqp_rpc_reply_t reply;
 
@@ -1516,7 +1516,7 @@ PyRabbitMQ_Connection_queue_unbind(PyRabbitMQ_Connection *self,
     PyObject *routing_key = NULL;
     PyObject *arguments = NULL;
 
-    amqp_table_t uargs = AMQP_EMPTY_TABLE;
+    amqp_table_t uargs = amqp_empty_table;
     amqp_pool_t *channel_pool = NULL;
     amqp_rpc_reply_t reply;
 
@@ -1618,7 +1618,7 @@ PyRabbitMQ_Connection_queue_declare(PyRabbitMQ_Connection *self,
     amqp_queue_declare_ok_t *ok;
     amqp_rpc_reply_t reply;
     amqp_pool_t *channel_pool = NULL;
-    amqp_table_t qargs = AMQP_EMPTY_TABLE;
+    amqp_table_t qargs = amqp_empty_table;
     PyObject *ret = NULL;
 
     if (PyRabbitMQ_Not_Connected(self))
@@ -1717,7 +1717,7 @@ PyRabbitMQ_Connection_exchange_declare(PyRabbitMQ_Connection *self,
      * as it has been decided that it's not that useful after all. */
     unsigned int auto_delete = 0;
 
-    amqp_table_t eargs = AMQP_EMPTY_TABLE;
+    amqp_table_t eargs = amqp_empty_table;
     amqp_pool_t *channel_pool = NULL;
     amqp_rpc_reply_t reply;
 
@@ -1983,7 +1983,7 @@ PyRabbitMQ_Connection_basic_consume(PyRabbitMQ_Connection *self,
     amqp_basic_consume_ok_t *ok;
     amqp_rpc_reply_t reply;
     amqp_pool_t *channel_pool = NULL;
-    amqp_table_t cargs = AMQP_EMPTY_TABLE;
+    amqp_table_t cargs = amqp_empty_table;
 
     if (PyRabbitMQ_Not_Connected(self))
         goto bail;
@@ -2263,7 +2263,11 @@ PYRABBITMQ_MOD_INIT(_librabbitmq)
     PyObject *module, *socket_module;
 
     if (PyType_Ready(&PyRabbitMQ_ConnectionType) < 0) {
+    #if PY_MAJOR_VERSION >= 3
+        return NULL;
+    #else
         return;
+    #endif
     }
 
 #if PY_MAJOR_VERSION >= 3
@@ -2274,13 +2278,22 @@ PYRABBITMQ_MOD_INIT(_librabbitmq)
 #endif
 
     if (module == NULL) {
+    #if PY_MAJOR_VERSION >= 3
+        return NULL;
+    #else
         return;
+    #endif
     }
 
     /* Get socket.error */
     socket_module = PyImport_ImportModule("socket");
-    if (!socket_module)
+    if (!socket_module) {
+    #if PY_MAJOR_VERSION >= 3
+        return NULL;
+    #else
         return;
+    #endif
+    }
     PyRabbitMQ_socket_timeout = PyObject_GetAttrString(socket_module, "timeout");
     Py_XDECREF(socket_module);
 
