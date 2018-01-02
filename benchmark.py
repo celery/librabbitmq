@@ -55,7 +55,7 @@ def bench_basic_publish(iterations=10000, bytes=256):
         iterations * t_publish_librabbit.timeit(number=iterations)/iterations)
     )
 
-def bench_basic_consume(iterations=10000):
+def bench_basic_consume(iterations=10000, bytes=None):
     context = {"its": (iterations/2)/10}
     t_consume_amqp = timeit.Timer(stmt=CONSUME % context,
                                   setup=INIT_AMQP)
@@ -72,7 +72,16 @@ def bench_basic_consume(iterations=10000):
 benchmarks = [bench_basic_publish, bench_basic_consume]
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Runs benchmark against local RabbitMQ instance.')
+    parser.add_argument('--iters', metavar='N', type=int, default=100000,
+                        help='Number of iterations')
+    parser.add_argument('--bytes', metavar='B', type=int,
+                        default=256, help='Message size')
+
+    args = parser.parse_args()
     for benchmark in benchmarks:
-        benchmark(100000)
+        benchmark(args.iters, bytes=args.bytes)
 
 
