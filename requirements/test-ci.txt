@@ -1,1 +1,4 @@
+mock
+six>=1.0.0
+amqp>=1.4.6
 coverage>=3.0
