@@ -1,0 +1,12 @@
+language: python
+dist: trusty
+sudo: required
+
+install:
+  - pip install -r requirements/test-ci.txt
+
+script:
+  - make test
+
+services:
+  - rabbitmq
