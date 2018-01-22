@@ -211,7 +211,7 @@ setup(
     license='MPL',
     description='AMQP Client using the rabbitmq-c library.',
     long_description=long_description,
-    test_suite='nose.collector',
+    test_suite="tests",  
     zip_safe=False,
     packages=packages,
     cmdclass=cmdclass,

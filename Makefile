@@ -80,11 +80,12 @@ flakeplusdiag:
 
 flakes: flakediag flakeplusdiag
 
-test:
-	nosetests -xv librabbitmq.tests
+test: build
+	python setup.py test
 
-cov:
-	nosetests -xv librabbitmq.tests --with-coverage --cover-html --cover-branch
+cov: build
+	coverage run --source=librabbitmq setup.py test
+	coverage report
 
 removepyc:
 	-find . -type f -a \( -name "*.pyc" -o -name "*$$py.class" \) | xargs rm
