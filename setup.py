@@ -205,7 +205,7 @@ if 'install' in sys.argv and 'build' not in sys.argv:
         sys.argv[:_index] + ['build', 'install'] + sys.argv[_index + 1:]
     )
 
-# 'bdist_egg doesn't always call build for some reason
+# 'bdist_wheel doesn't always call build for some reason
 if 'bdist_wheel' in sys.argv and 'build' not in sys.argv:
     _index = sys.argv.index('bdist_wheel')
     sys.argv[:] = (
