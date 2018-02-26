@@ -104,6 +104,8 @@ def create_builder():
 
             here = os.path.abspath(os.getcwd())
             config = sysconfig.get_config_vars()
+            make = find_make()
+
             try:
                 vars = {'ld': config['LDFLAGS'],
                         'c': config['CFLAGS']}
@@ -117,8 +119,23 @@ def create_builder():
                     ('CFLAGS', vars['c']),
                     ('LDFLAGS', vars['ld']),
                 )
+
                 try:
+                    if not os.path.isdir(os.path.join(LRMQDIST(), '.git')):
+                        print('- pull submodule rabbitmq-c...')
+                        if os.path.isfile('Makefile'):
+                            os.system(' '.join([make, 'submodules']))
+                        else:
+                            os.system(' '.join(['git', 'clone', '-b', 'v0.8.0', 
+                                'https://github.com/alanxz/rabbitmq-c.git',
+                                'rabbitmq-c']))
+
                     os.chdir(LRMQDIST())
+
+                    if not os.path.isfile('configure'):
+                        print('- autoreconf')
+                        os.system('autoreconf -i')
+
                     if not os.path.isfile('config.h'):
                         print('- configure rabbitmq-c...')
                         if os.system('/bin/sh configure --disable-tools \
@@ -187,7 +204,14 @@ if 'install' in sys.argv and 'build' not in sys.argv:
     sys.argv[:] = (
         sys.argv[:_index] + ['build', 'install'] + sys.argv[_index + 1:]
     )
-    
+
+# 'bdist_wheel doesn't always call build for some reason
+if 'bdist_wheel' in sys.argv and 'build' not in sys.argv:
+    _index = sys.argv.index('bdist_wheel')
+    sys.argv[:] = (
+        sys.argv[:_index] + ['build', 'bdist_wheel'] + sys.argv[_index + 1:]
+    )
+
 # 'bdist_egg doesn't always call build for some reason
 if 'bdist_egg' in sys.argv and 'build' not in sys.argv:
     _index = sys.argv.index('bdist_egg')
