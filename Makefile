@@ -29,16 +29,16 @@ clean-build:
 	-rm -rf build
 
 build: clean-build dist
-	python setup.py build
+	$(PYTHON) setup.py build
 
 install: build
-	python setup.py install
+	$(PYTHON) setup.py install
 
 develop: build
-	python setup.py develop
+	$(PYTHON) setup.py develop
 
 pyclean:
-	-python setup.py clean
+	-$(PYTHON) setup.py clean
 	-rm -rf build
 	-rm -f _librabbitmq.so
 
@@ -60,8 +60,8 @@ manylinux1: dist
 	 docker run --rm -v `pwd`:/workspace:z quay.io/pypa/manylinux1_x86_64  /workspace/build-manylinux1-wheels.sh
 
 rebuild:
-	python setup.py build
-	python setup.py install
+	$(PYTHON) setup.py build
+	$(PYTHON) setup.py install
 
 
 # Distro tools
@@ -81,7 +81,7 @@ flakeplusdiag:
 flakes: flakediag flakeplusdiag
 
 test: build
-	python setup.py test
+	$(PYTHON) setup.py test
 
 cov: build
 	coverage run --source=librabbitmq setup.py test
