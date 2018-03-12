@@ -7,7 +7,33 @@
 .. contents::
     :local:
 
-.. _version-1.6.1:
+.. _version-2.0.0:
+
+2.0.0
+=====
+:release-date: TBD
+
+- rabbitmq-c submodule is moved from https://github.com/ask/rabbitmq-c.git to official repository 
+  https://github.com/alanxz/rabbitmq-c and version is bumped to version 0.8.0 (caad0ef1533783729c7644a226c989c79b4c497b)
+
+- rabbitmq-codegen submodule is removed
+
+- Added support of cPython 3.4, 3.5, 3.6
+
+- Dropped support of cPython <= 2.6
+
+- librabbitmq is calling callback function with payload as memoryview instead of old style buffer
+
+- Library six is added as a requirement
+
+- Updated unittests and benchmark. Removed dependency to nose library.
+
+- AMQP client properties are exposed when connecting to RMQ broker
+
+- Empty message bodies are allowed
+
+- In recv, make sure all frames are read from the same channel
+
 
 1.6.1
 =====
