@@ -5,9 +5,11 @@ from setuptools import setup, find_packages
 
 # --with-librabbitmq=<dir>: path to librabbitmq package if needed
 
-LRMQDIST = lambda *x: os.path.join('rabbitmq-c', *x)
+BASE_PATH = os.path.dirname(__file__)
+
+LRMQDIST = lambda *x: os.path.join(BASE_PATH, 'rabbitmq-c', *x)
 LRMQSRC = lambda *x: LRMQDIST('librabbitmq', *x)
-PYCP = lambda *x: os.path.join('Modules', '_librabbitmq', *x)
+PYCP = lambda *x: os.path.join(BASE_PATH, 'Modules', '_librabbitmq', *x)
 
 
 def senv(*k__v, **kwargs):
@@ -162,7 +164,7 @@ def find_make(alt=('gmake', 'gnumake', 'make', 'nmake')):
                 return make
 
 
-long_description = open('README.rst', 'U').read()
+long_description = open(os.path.join(BASE_PATH, 'README.rst'), 'U').read()
 distmeta = open(PYCP('distmeta.h')).read().strip().splitlines()
 distmeta = [item.split('\"')[1] for item in distmeta]
 version = distmeta[0].strip()
