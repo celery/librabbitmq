@@ -11,7 +11,7 @@
 
 2.0.0
 =====
-:release-date: TBD
+:release-date: 2018-01-19
 
 - rabbitmq-c submodule is moved from https://github.com/ask/rabbitmq-c.git to official repository 
   https://github.com/alanxz/rabbitmq-c and version is bumped to version 0.8.0 (caad0ef1533783729c7644a226c989c79b4c497b)
