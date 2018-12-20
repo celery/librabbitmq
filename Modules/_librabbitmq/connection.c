@@ -741,7 +741,7 @@ PyDict_to_basic_properties(PyObject *p,
         props->_flags |= AMQP_BASIC_PRIORITY_FLAG;
     }
     if ((value = PyDict_GetItemString(p, "timestamp")) != NULL) {
-        props->timestamp = (uint8_t)PyInt_AS_LONG(value);
+        props->timestamp = (uint64_t)PyInt_AS_LONG(value);
         props->_flags |= AMQP_BASIC_TIMESTAMP_FLAG;
     }
 
