@@ -320,7 +320,7 @@ PyDict_ToAMQTable(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
             is_unicode = PyUnicode_Check(dvalue);
             if (is_unicode || PyBytes_Check(dvalue)) {
                 if (is_unicode) {
-                    if ((dvalue = PyUnicode_AsASCIIString(dvalue)) == NULL)
+                    if ((dvalue = PyUnicode_AsEncodedString(dvalue, "utf-8", "strict")) == NULL)
                         goto error;
                 }
                 AMQTable_SetStringValue(&dst,

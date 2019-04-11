@@ -1,3 +1,4 @@
+# coding: utf-8
 from __future__ import absolute_import
 
 from six.moves import xrange
@@ -30,6 +31,14 @@ class test_Channel(unittest.TestCase):
         self.assertGreater(self.channel.queue_purge(TEST_QUEUE), 2)
         self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
         self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
+
+    def test_nonascii_headers(self):
+        message = Message(
+            channel=self.channel,
+            body='the quick brown fox jumps over the lazy dog',
+            properties=dict(content_type='application/json',
+                            content_encoding='utf-8',
+                            headers={'key': '¯\_(ツ)_/¯'}))
         self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
 
     def _queue_declare(self):
