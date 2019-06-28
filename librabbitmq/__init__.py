@@ -194,6 +194,9 @@ class Connection(_librabbitmq.Connection):
                  client_properties=None, **kwargs):
         if ':' in host:
             host, port = host.split(':')
+        if ssl:
+            ssl = True
+        confirmed = confirmed if confirmed else kwargs.pop("confirm_publish",False)
         super(Connection, self).__init__(
             hostname=host, port=int(port), userid=userid, password=password,
             virtual_host=virtual_host, channel_max=channel_max,
