@@ -8,16 +8,14 @@ PYTHON=python
 all: build
 
 add-submodules:
-	-git submodule add -b v0.8.0 https://github.com/alanxz/rabbitmq-c.git
+	git submodule add -b master https://github.com/alanxz/rabbitmq-c.git
 
 submodules:
 	git submodule init
 	git submodule update
 
 rabbitmq-c: submodules
-	(cd $(RABBIT_DIR); test -f configure || autoreconf -i)
-	(cd $(RABBIT_DIR); test -f Makefile  || automake --add-missing)
-
+	(cd $(RABBIT_DIR); cmake .; cmake --build .)
 
 rabbitmq-clean:
 	-(cd $(RABBIT_DIR) && make clean)
@@ -50,8 +48,7 @@ distclean: pyclean rabbitmq-distclean removepyc
 	-rm -f erl_crash.dump
 
 $(RABBIT_TARGET):
-	(test -f config.h || cd $(RABBIT_DIR); ./configure --disable-tools --disable-docs)
-	(cd $(RABBIT_DIR); make)
+	(cd $(RABBIT_DIR); cmake .; cmake --build .;)
 
 
 dist: rabbitmq-c $(RABBIT_TARGET)

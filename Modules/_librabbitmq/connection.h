@@ -161,6 +161,8 @@ typedef struct {
     int frame_max;
     int channel_max;
     int heartbeat;
+    int ssl;
+    int confirmed;
 
     int sockfd;
     int connected;
@@ -271,6 +273,10 @@ static PyMemberDef PyRabbitMQ_ConnectionType_members[] = {
         offsetof(PyRabbitMQ_Connection, port), READONLY, NULL},
     {"heartbeat", T_INT,
         offsetof(PyRabbitMQ_Connection, heartbeat), READONLY, NULL},
+    {"ssl", T_INT,
+            offsetof(PyRabbitMQ_Connection, ssl), READONLY, NULL},
+    {"confirmed", T_INT,
+            offsetof(PyRabbitMQ_Connection, confirmed), READONLY, NULL},
     {"server_properties", T_OBJECT_EX,
         offsetof(PyRabbitMQ_Connection, server_properties), READONLY, NULL},
     {"connected", T_INT,

@@ -7,6 +7,9 @@
 
 #include <amqp.h>
 #include <amqp_tcp_socket.h>
+#include <amqp_ssl_socket.h>
+#include <amqp_ssl_socket.h>
+#include <amqp_framing.h>
 
 #include "connection.h"
 #include "distmeta.h"
@@ -974,6 +977,8 @@ PyRabbitMQ_ConnectionType_init(PyRabbitMQ_Connection *self,
         "channel_max",
         "frame_max",
         "heartbeat",
+        "ssl",
+        "confirmed",
         "client_properties",
         NULL
     };
@@ -985,12 +990,15 @@ PyRabbitMQ_ConnectionType_init(PyRabbitMQ_Connection *self,
     int channel_max = 0xffff;
     int frame_max = 131072;
     int heartbeat = 0;
+    int ssl = 0;
+    int confirmed = 0;
     int port = 5672;
     PyObject *client_properties = NULL;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|ssssiiiiO", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|ssssiiiiiiO", kwlist,
                                      &hostname, &userid, &password, &virtual_host, &port,
-                                     &channel_max, &frame_max, &heartbeat, &client_properties)) {
+                                     &channel_max, &frame_max, &heartbeat, &ssl, &confirmed,
+                                     &client_properties)) {
         return -1;
     }
 
@@ -1012,6 +1020,8 @@ PyRabbitMQ_ConnectionType_init(PyRabbitMQ_Connection *self,
     self->channel_max = channel_max;
     self->frame_max = frame_max;
     self->heartbeat = heartbeat;
+    self->ssl = ssl;
+    self->confirmed = confirmed;
     self->weakreflist = NULL;
     self->callbacks = PyDict_New();
     if (self->callbacks == NULL) return -1;
@@ -1057,7 +1067,13 @@ PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self)
     }
     Py_BEGIN_ALLOW_THREADS;
     self->conn = amqp_new_connection();
-    socket = amqp_tcp_socket_new(self->conn);
+    if (self->ssl == 1 ) {
+        socket = amqp_ssl_socket_new(self->conn);
+        amqp_ssl_socket_set_verify_peer(socket, 0);
+        amqp_ssl_socket_set_verify_hostname(socket, 0);
+    } else {
+        socket = amqp_tcp_socket_new(self->conn);
+    }
     Py_END_ALLOW_THREADS;
 
     if (!socket) {
@@ -1132,14 +1148,22 @@ PyRabbitMQ_Connection_close(PyRabbitMQ_Connection *self)
 unsigned int
 PyRabbitMQ_Connection_create_channel(PyRabbitMQ_Connection *self, unsigned int channel)
 {
-    amqp_rpc_reply_t reply;
+    amqp_rpc_reply_t replyopen;
+    amqp_rpc_reply_t replyconfirm;
 
     Py_BEGIN_ALLOW_THREADS;
     amqp_channel_open(self->conn, channel);
-    reply = amqp_get_rpc_reply(self->conn);
+    replyopen = amqp_get_rpc_reply(self->conn);
+    if (self->confirmed){
+      amqp_confirm_select(self->conn, (amqp_channel_t)channel);
+      replyconfirm = amqp_get_rpc_reply(self->conn);
+    }
     Py_END_ALLOW_THREADS;
-
-    return PyRabbitMQ_HandleAMQError(self, 0, reply, "Couldn't create channel");
+    if ((replyopen.reply_type != AMQP_RESPONSE_NORMAL) || !(self->confirmed)) {
+      return PyRabbitMQ_HandleAMQError(self, 0, replyopen, "Couldn't create channel");
+    } else {
+      return PyRabbitMQ_HandleAMQError(self, 0, replyconfirm, "Couldn't set confirm mode");
+    }
 }
 
 
@@ -1811,6 +1835,8 @@ PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
     PyObject *exchange = NULL;
     PyObject *routing_key = NULL;
     PyObject *propdict;
+    amqp_frame_t frame;
+
     unsigned int channel = 0;
     unsigned int mandatory = 0;
     unsigned int immediate = 0;
@@ -1818,6 +1844,7 @@ PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
     char *body_buf = NULL;
     Py_ssize_t body_size = 0;
 
+    int status = 0;
     int ret = 0;
     amqp_basic_properties_t props;
     amqp_bytes_t bytes;
@@ -1852,11 +1879,19 @@ PyRabbitMQ_Connection_basic_publish(PyRabbitMQ_Connection *self,
                              (amqp_boolean_t)immediate,
                              &props,
                              bytes);
+    if (self->confirmed){
+      status = amqp_simple_wait_frame_on_channel(self->conn,channel,&frame);
+    }
     amqp_maybe_release_buffers_on_channel(self->conn, channel);
     Py_END_ALLOW_THREADS;
 
     if (!PyRabbitMQ_HandleError(ret, "basic.publish")) {
         goto error;
+    }
+    if ((self->confirmed) && (status != AMQP_STATUS_OK) &&
+        (frame.frame_type != AMQP_FRAME_METHOD) &&
+        (frame.payload.method.id != AMQP_BASIC_ACK_METHOD )){
+      goto error;
     }
     Py_RETURN_NONE;
 
@@ -1865,8 +1900,6 @@ error:
 bail:
     return 0;
 }
-
-
 /*
  * Connection._basic_ack
  */

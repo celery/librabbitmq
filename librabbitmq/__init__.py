@@ -190,14 +190,14 @@ class Connection(_librabbitmq.Connection):
 
     def __init__(self, host='localhost', userid='guest', password='guest',
                  virtual_host='/', port=5672, channel_max=0xffff,
-                 frame_max=131072, heartbeat=0, lazy=False,
+                 frame_max=131072, heartbeat=0, ssl=False, confirmed=False, lazy=False,
                  client_properties=None, **kwargs):
         if ':' in host:
             host, port = host.split(':')
         super(Connection, self).__init__(
             hostname=host, port=int(port), userid=userid, password=password,
             virtual_host=virtual_host, channel_max=channel_max,
-            frame_max=frame_max, heartbeat=heartbeat,
+            frame_max=frame_max, heartbeat=heartbeat, ssl=int(ssl),confirmed=int(confirmed),
             client_properties=client_properties,
         )
         self.channels = {}
