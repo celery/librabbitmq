@@ -75,7 +75,6 @@ def create_builder():
 
     if is_linux:  # Issue #42
         libs.append('rt')  # -lrt for clock_gettime
-    libs.append('crypto')
     libs.append('ssl')
     librabbitmq_ext = Extension(
         '_librabbitmq',
@@ -134,7 +133,7 @@ def create_builder():
                          if os.path.isfile('Makefile'):
                              os.system(' '.join([make, 'submodules']))
                          else:
-                             os.system(' '.join(['git', 'clone', '-b', 'master',
+                             os.system(' '.join(['git', 'clone', '-b', 'v0.9.0',
                                  'https://github.com/alanxz/rabbitmq-c.git',
                                  'rabbitmq-c']))
 
