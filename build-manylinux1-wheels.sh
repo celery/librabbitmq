@@ -3,7 +3,7 @@
 set -e -x
 
 # Install a system package required by our library
-yum  install -y librabbmitmq-devel make librabbitmq python-devel gcc automake
+yum  install -y librabbitmq-devel make librabbitmq python-devel gcc automake
 
 
 # Compile wheels
