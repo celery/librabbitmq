@@ -38,7 +38,7 @@ class test_Channel(unittest.TestCase):
             body='the quick brown fox jumps over the lazy dog',
             properties=dict(content_type='application/json',
                             content_encoding='utf-8',
-                            headers={'key': '¯\_(ツ)_/¯'}))
+                            headers={'key': r'¯\_(ツ)_/¯'}))
         self.channel.basic_publish(message, TEST_QUEUE, TEST_QUEUE)
 
     def _queue_declare(self):
