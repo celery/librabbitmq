@@ -164,7 +164,13 @@ def find_make(alt=('gmake', 'gnumake', 'make', 'nmake')):
                 return make
 
 
-long_description = open(os.path.join(BASE_PATH, 'README.rst'), 'U').read()
+if six.PY2:
+    with open(os.path.join(BASE_PATH, 'README.rst'), 'U') as f:
+        long_description = f.read()
+else:
+    with open(os.path.join(BASE_PATH, 'README.rst')) as f:
+        long_description = f.read()
+
 distmeta = open(PYCP('distmeta.h')).read().strip().splitlines()
 distmeta = [item.split('\"')[1] for item in distmeta]
 version = distmeta[0].strip()
