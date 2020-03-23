@@ -64,6 +64,9 @@ def create_builder():
         'amqp_socket.c',
         'amqp_table.c',
         'amqp_tcp_socket.c',
+        'amqp_openssl_hostname_validation.c',
+        'amqp_openssl.c',
+        'amqp_openssl_bio.c',
         'amqp_time.c',
         'amqp_url.c',
     ])
@@ -72,7 +75,7 @@ def create_builder():
 
     if is_linux:  # Issue #42
         libs.append('rt')  # -lrt for clock_gettime
-
+    libs.append('ssl')
     librabbitmq_ext = Extension(
         '_librabbitmq',
         sources=list(PyC_files) + list(librabbit_files),
@@ -96,6 +99,7 @@ def create_builder():
     class build(_build):
         stdcflags = [
             '-DHAVE_CONFIG_H',
+            '-DENABLE_SSL_SUPPORT=ON',
         ]
         if os.environ.get('PEDANTIC'):
             # Python.h breaks -pedantic, so can only use it while developing.
@@ -123,26 +127,22 @@ def create_builder():
                 )
 
                 try:
+           
                     if not os.path.isdir(os.path.join(LRMQDIST(), '.git')):
-                        print('- pull submodule rabbitmq-c...')
-                        if os.path.isfile('Makefile'):
-                            os.system(' '.join([make, 'submodules']))
-                        else:
-                            os.system(' '.join(['git', 'clone', '-b', 'v0.8.0', 
-                                'https://github.com/alanxz/rabbitmq-c.git',
-                                'rabbitmq-c']))
+                         print('- pull submodule rabbitmq-c...')
+                         if os.path.isfile('Makefile'):
+                             os.system(' '.join([make, 'submodules']))
+                         else:
+                             os.system(' '.join(['git', 'clone', '-b', 'v0.9.0',
+                                 'https://github.com/alanxz/rabbitmq-c.git',
+                                 'rabbitmq-c']))
 
                     os.chdir(LRMQDIST())
 
-                    if not os.path.isfile('configure'):
-                        print('- autoreconf')
-                        os.system('autoreconf -i')
-
-                    if not os.path.isfile('config.h'):
-                        print('- configure rabbitmq-c...')
-                        if os.system('/bin/sh configure --disable-tools \
-                                --disable-docs --disable-dependency-tracking'):
-                            return
+                    print('- cmake')
+                    os.system('cmake .')
+                    print(' -build')
+                    os.system('cmake --build .')
                 finally:
                     os.environ.update(restore)
             finally:
@@ -157,7 +157,7 @@ def create_builder():
     return librabbitmq_ext, build
 
 
-def find_make(alt=('gmake', 'gnumake', 'make', 'nmake')):
+def find_make(alt=('gmake', 'gnumake', 'make', 'nmake','cmake')):
     for path in os.environ['PATH'].split(':'):
         for make in (os.path.join(path, m) for m in alt):
             if os.path.isfile(make):
