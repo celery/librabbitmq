@@ -51,6 +51,10 @@ def create_builder():
     sys.argv[1:] = unprocessed
 
     incdirs.append(LRMQSRC())
+    if find_cmake() != "":
+        incdirs.append(LRMQDIST('build', 'librabbitmq'))
+
+
     PyC_files = map(PYCP, [
         'connection.c',
     ])
@@ -107,6 +111,7 @@ def create_builder():
             here = os.path.abspath(os.getcwd())
             config = sysconfig.get_config_vars()
             make = find_make()
+            cmake = find_cmake()
 
             try:
                 vars = {'ld': config['LDFLAGS'],
@@ -128,21 +133,34 @@ def create_builder():
                         if os.path.isfile('Makefile'):
                             os.system(' '.join([make, 'submodules']))
                         else:
-                            os.system(' '.join(['git', 'clone', '-b', 'v0.8.0', 
+                            os.system(' '.join(['git', 'clone', '-b', 'v0.8.0',
                                 'https://github.com/alanxz/rabbitmq-c.git',
                                 'rabbitmq-c']))
 
                     os.chdir(LRMQDIST())
 
-                    if not os.path.isfile('configure'):
+                    if cmake == "" and not os.path.isfile('configure'):
                         print('- autoreconf')
                         os.system('autoreconf -i')
 
-                    if not os.path.isfile('config.h'):
+                    if cmake == "" and not os.path.isfile('config.h'):
                         print('- configure rabbitmq-c...')
                         if os.system('/bin/sh configure --disable-tools \
                                 --disable-docs --disable-dependency-tracking'):
                             return
+
+                    if cmake:
+                        print('- cmake rabbitmq-c...')
+                        if os.system('mkdir -p build'):
+                            return
+
+                        os.chdir('build')
+                        if os.system(cmake + ' ..'):
+                            return
+
+                        if os.system(make + ' rabbitmq rabbitmq-static'):
+                            return
+
                 finally:
                     os.environ.update(restore)
             finally:
@@ -164,7 +182,16 @@ def find_make(alt=('gmake', 'gnumake', 'make', 'nmake')):
                 return make
 
 
-if six.PY2:
+def find_cmake():
+    for path in os.environ['PATH'].split(':'):
+        make = os.path.join(path, 'cmake')
+        if os.path.isfile(make):
+            return make
+
+    return ""
+
+
+if sys.version_info[0] < 3:
     with open(os.path.join(BASE_PATH, 'README.rst'), 'U') as f:
         long_description = f.read()
 else:
@@ -243,7 +270,7 @@ setup(
     license='MPL',
     description='AMQP Client using the rabbitmq-c library.',
     long_description=long_description,
-    test_suite="tests",  
+    test_suite="tests",
     zip_safe=False,
     packages=packages,
     cmdclass=cmdclass,
