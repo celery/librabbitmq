@@ -155,8 +155,9 @@ def create_builder():
                             return
 
                         os.chdir('build')
-                        if os.system(cmake + ' ..'):
-                            return
+                        if not os.path.isfile('Makefile'):
+                            if os.system(cmake + ' ..'):
+                                return
 
                         if os.system(make + ' rabbitmq rabbitmq-static'):
                             return
