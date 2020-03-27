@@ -20,6 +20,7 @@ rabbitmq-c: submodules
 
 
 rabbitmq-clean:
+	-(rm -rf $(RABBIT_DIR)/build || true)
 	-(cd $(RABBIT_DIR) && make clean || echo "warning... rabbitmq-clean failed")
 
 rabbitmq-distclean:
