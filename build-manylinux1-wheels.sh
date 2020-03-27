@@ -5,6 +5,11 @@ set -e -x
 # Install system packages required by our library
 yum install -y cmake openssl-devel gcc automake
 
+# Ensure a fresh build of rabbitmq-c.
+(cd /workspace && make submodules)
+rm -rf /workspace/rabbitmq-c/build
+(cd /workspace && make rabbitmq-c)
+
 # Compile wheels
 for PYBIN in /opt/python/*/bin; do
     (cd /workspace && ${PYBIN}/python setup.py install)
@@ -22,7 +27,7 @@ for PYBIN in /opt/python/*/bin/; do
     # vine 5.0.0a1 breaks python2
     # https://github.com/celery/vine/issues/34
     if [[ "$PYBIN" == *"python/cp2"* ]]; then
-        ${PYBIN}/pip install -f "vine==1.3.0"
+        ${PYBIN}/pip install --force-reinstall "vine==1.3.0"
     fi
 
     ${PYBIN}/pip install librabbitmq -f /workspace/wheelhouse
