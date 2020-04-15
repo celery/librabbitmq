@@ -380,6 +380,7 @@ PyIter_ToAMQArray(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
     PyObject *iterator = PyObject_GetIter(src);
     if (iterator == NULL) return dst;
     PyObject *item = NULL;
+    PyObject *item_tmp = NULL;
 
     /* allocate new amqp array */
     dst.num_entries = 0;
@@ -410,9 +411,11 @@ PyIter_ToAMQArray(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
             is_unicode = PyUnicode_Check(item);
             if (is_unicode || PyBytes_Check(item)) {
                 if (is_unicode) {
+                    /* PyUnicode_AsASCIIString returns a new ref! */
+                    item_tmp = item;
                     if ((item = PyUnicode_AsASCIIString(item)) == NULL)
                         goto item_error;
-                    PyObjectPool_AddEntry(pyobj_pool, item);
+                    Py_XDECREF(item_tmp);
                 }
                 AMQArray_SetStringValue(
                     &dst, PyString_AS_AMQBYTES(item));
@@ -430,6 +433,7 @@ PyIter_ToAMQArray(amqp_connection_state_t conn, PyObject *src, amqp_pool_t *pool
 
     return dst;
 item_error:
+    Py_XDECREF(item_tmp);
     Py_XDECREF(item);
 error:
     Py_XDECREF(iterator);
@@ -828,7 +832,7 @@ PyObjectPool_Maybe_Unicode(PyObject *s, pyobject_pool_t *pyobj_pool)
 _PYRMQ_INLINE PyObject*
 PyObjectArray_AddEntry(pyobject_array_t *array, PyObject *obj)
 {
-    if (array->num_entries < PYOBJECT_ARRAY_MAX) {
+    if (obj && array->num_entries < PYOBJECT_ARRAY_MAX) {
         array->entries[array->num_entries] = obj;
         array->num_entries++;
     }
@@ -838,14 +842,16 @@ PyObjectArray_AddEntry(pyobject_array_t *array, PyObject *obj)
 
 static PyObject *PyObjectPool_AddEntry(pyobject_pool_t *array, PyObject *obj)
 {
-    if (array->num_entries == PYOBJECT_POOL_MAX) {
-        if (!array->next)
-            array->next = PyObjectPool_New(array->pool);
+    if (obj) {
+        if (array->num_entries == PYOBJECT_POOL_MAX) {
+            if (!array->next)
+                array->next = PyObjectPool_New(array->pool);
 
-        PyObjectPool_AddEntry(array->next, obj);
-    } else {
-        array->entries[array->num_entries] = obj;
-        array->num_entries++;
+            PyObjectPool_AddEntry(array->next, obj);
+        } else {
+            array->entries[array->num_entries] = obj;
+            array->num_entries++;
+        }
     }
 
     return obj;
