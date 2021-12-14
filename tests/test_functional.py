@@ -5,6 +5,7 @@ from six.moves import xrange
 
 import socket
 import unittest
+from array import array
 
 from librabbitmq import Message, Connection, ConnectionError, ChannelError
 TEST_QUEUE = 'pyrabbit.testq'
@@ -121,6 +122,15 @@ class test_Channel(unittest.TestCase):
         with self.assertRaises(socket.timeout):
             self.connection.drain_events(timeout=0.1)
         self.assertEqual(len(messages), 1)
+
+    def test_get_free_channel_id(self):
+        self.connection._used_channel_ids = array('H')
+        assert self.connection._get_free_channel_id() == 1
+
+    def test_get_free_channel_id__channels_full(self):
+        self.connection._used_channel_ids = array('H', range(1, self.connection.channel_max))
+        with self.assertRaises(ConnectionError):
+            self.connection._get_free_channel_id()
 
     def tearDown(self):
         if self.channel and self.connection.connected:

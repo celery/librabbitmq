@@ -201,7 +201,7 @@ class Connection(_librabbitmq.Connection):
             client_properties=client_properties,
         )
         self.channels = {}
-        self._avail_channel_ids = array('H', xrange(self.channel_max, 0, -1))
+        self._used_channel_ids = array('H')
         if not lazy:
             self.connect()
 
@@ -247,15 +247,21 @@ class Connection(_librabbitmq.Connection):
             pass
         self.channels.pop(channel.channel_id, None)
         self.callbacks.pop(channel.channel_id, None)
-        self._avail_channel_ids.append(channel.channel_id)
+        try:
+            self._used_channel_ids.remove(channel.channel_id)
+        except ValueError:
+            # channel id already removed
+            pass
 
     def _get_free_channel_id(self):
-        try:
-            return self._avail_channel_ids.pop()
-        except IndexError:
-            raise ConnectionError(
-                'No free channel ids, current=%d, channel_max=%d' % (
-                    len(self.channels), self.channel_max))
+        for channel_id in range(1, self.channel_max):
+            if channel_id not in self._used_channel_ids:
+                self._used_channel_ids.append(channel_id)
+                return channel_id
+
+        raise ConnectionError(
+            'No free channel ids, current=%d, channel_max=%d' % (
+                len(self.channels), self.channel_max))
 
     def close(self):
         try:
