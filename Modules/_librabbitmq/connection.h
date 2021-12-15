@@ -151,6 +151,7 @@ typedef struct {
     int frame_max;
     int channel_max;
     int heartbeat;
+    int connect_timeout;
 
     int sockfd;
     int connected;
@@ -267,6 +268,8 @@ static PyMemberDef PyRabbitMQ_ConnectionType_members[] = {
         offsetof(PyRabbitMQ_Connection, frame_max), READONLY, NULL},
     {"callbacks", T_OBJECT_EX,
         offsetof(PyRabbitMQ_Connection, callbacks), READONLY, NULL},
+    {"connect_timeout", T_INT,
+        offsetof(PyRabbitMQ_Connection, connect_timeout), READONLY, NULL},
     {NULL, 0, 0, 0, NULL}  /* Sentinel */
 };
 
