@@ -1052,6 +1052,7 @@ PyRabbitMQ_ConnectionType_init(PyRabbitMQ_Connection *self,
         "frame_max",
         "heartbeat",
         "client_properties",
+        "connect_timeout",
         NULL
     };
     char *hostname;
@@ -1063,11 +1064,13 @@ PyRabbitMQ_ConnectionType_init(PyRabbitMQ_Connection *self,
     int frame_max = 131072;
     int heartbeat = 0;
     int port = 5672;
+    int connect_timeout = 0;
     PyObject *client_properties = NULL;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|ssssiiiiO", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|ssssiiiiOi", kwlist,
                                      &hostname, &userid, &password, &virtual_host, &port,
-                                     &channel_max, &frame_max, &heartbeat, &client_properties)) {
+                                     &channel_max, &frame_max, &heartbeat, &client_properties,
+                                     &connect_timeout)) {
         return -1;
     }
 
@@ -1089,6 +1092,7 @@ PyRabbitMQ_ConnectionType_init(PyRabbitMQ_Connection *self,
     self->channel_max = channel_max;
     self->frame_max = frame_max;
     self->heartbeat = heartbeat;
+    self->connect_timeout = connect_timeout;
     self->weakreflist = NULL;
     self->callbacks = PyDict_New();
     if (self->callbacks == NULL) return -1;
@@ -1127,6 +1131,7 @@ PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self)
     amqp_rpc_reply_t reply;
     amqp_pool_t pool;
     amqp_table_t properties;
+    struct timeval timeout = {0, 0};
 
     pyobject_array_t pyobj_array = {0};
 
@@ -1144,7 +1149,13 @@ PyRabbitMQ_Connection_connect(PyRabbitMQ_Connection *self)
         goto error;
     }
     Py_BEGIN_ALLOW_THREADS;
-    status = amqp_socket_open(socket, self->hostname, self->port);
+    if (self->connect_timeout <= 0) {
+        status = amqp_socket_open(socket, self->hostname, self->port);
+    } else {
+        timeout.tv_sec = self->connect_timeout;
+        status = amqp_socket_open_noblock(socket, self->hostname, self->port, &timeout);
+    }
+
     Py_END_ALLOW_THREADS;
     if (PyRabbitMQ_HandleAMQStatus(status, "Error opening socket")) {
         goto error;

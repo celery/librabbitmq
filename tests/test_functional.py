@@ -6,9 +6,43 @@ from six.moves import xrange
 import socket
 import unittest
 from array import array
+import time
 
 from librabbitmq import Message, Connection, ConnectionError, ChannelError
 TEST_QUEUE = 'pyrabbit.testq'
+
+
+class test_Connection(unittest.TestCase):
+    def test_connection_defaults(self):
+        """Test making a connection with the default settings."""
+        with Connection() as connection:
+            self.assertGreaterEqual(connection.fileno(), 0)
+
+    def test_connection_invalid_host(self):
+        """Test connection to an invalid host fails."""
+        # Will fail quickly as OS will reject it.
+        with self.assertRaises(ConnectionError):
+            Connection(host="255.255.255.255")
+
+    def test_connection_invalid_port(self):
+        """Test connection to an invalid port fails."""
+        # Will fail quickly as OS will reject it.
+        with self.assertRaises(ConnectionError):
+            Connection(port=0)
+
+    def test_connection_timeout(self):
+        """Test connection timeout."""
+        # Can't rely on local OS being configured to ignore SYN packets
+        # (OS would normally reply with RST to closed port). To test the
+        # timeout, need to connect to something that is either slow, or
+        # never responds.
+        start_time = time.time()
+        with self.assertRaises(ConnectionError):
+            Connection(host="google.com", port=81, connect_timeout=3)
+        took_time = time.time() - start_time
+        # Allow some leaway to avoid spurious test failures.
+        self.assertGreaterEqual(took_time, 2)
+        self.assertLessEqual(took_time, 4)
 
 
 class test_Channel(unittest.TestCase):
