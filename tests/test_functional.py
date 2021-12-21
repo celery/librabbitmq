@@ -44,6 +44,24 @@ class test_Connection(unittest.TestCase):
         self.assertGreaterEqual(took_time, 2)
         self.assertLessEqual(took_time, 4)
 
+    def test_get_free_channel_id(self):
+        with Connection() as connection:
+            assert connection._get_free_channel_id() == 1
+            assert connection._get_free_channel_id() == 2
+
+    def test_get_free_channel_id__channels_full(self):
+        with Connection() as connection:
+            for _ in range(connection.channel_max):
+                connection._get_free_channel_id()
+            with self.assertRaises(ConnectionError):
+                connection._get_free_channel_id()
+
+    def test_channel(self):
+        with Connection() as connection:
+            self.assertEqual(connection._used_channel_ids, array('H'))
+            connection.channel()
+            self.assertEqual(connection._used_channel_ids, array('H', (1,)))
+
 
 class test_Channel(unittest.TestCase):
 
@@ -157,14 +175,11 @@ class test_Channel(unittest.TestCase):
             self.connection.drain_events(timeout=0.1)
         self.assertEqual(len(messages), 1)
 
-    def test_get_free_channel_id(self):
-        self.connection._used_channel_ids = array('H')
-        assert self.connection._get_free_channel_id() == 1
-
-    def test_get_free_channel_id__channels_full(self):
-        self.connection._used_channel_ids = array('H', range(1, self.connection.channel_max))
-        with self.assertRaises(ConnectionError):
-            self.connection._get_free_channel_id()
+    def test_close(self):
+        self.assertEqual(self.connection._used_channel_ids, array('H', (1,)))
+        self.channel.close()
+        self.channel = None
+        self.assertEqual(self.connection._used_channel_ids, array('H'))
 
     def tearDown(self):
         if self.channel and self.connection.connected:

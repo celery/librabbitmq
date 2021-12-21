@@ -255,8 +255,11 @@ class Connection(_librabbitmq.Connection):
             pass
 
     def _get_free_channel_id(self):
-        for channel_id in range(1, self.channel_max):
-            if channel_id not in self._used_channel_ids:
+        # Cast to a set for fast lookups, and keep stored as an array for lower memory usage.
+        used_channel_ids = set(self._used_channel_ids)
+
+        for channel_id in range(1, self.channel_max + 1):
+            if channel_id not in used_channel_ids:
                 self._used_channel_ids.append(channel_id)
                 return channel_id
 
