@@ -5,7 +5,7 @@ RABBIT_DIST=librabbitmq
 # Distribuition tools
 PYTHON=python
 
-all: build
+all: build manylinux2014
 
 add-submodules:
 	-git submodule add -b v0.8.0 https://github.com/alanxz/rabbitmq-c.git
@@ -57,8 +57,16 @@ $(RABBIT_TARGET):
 
 dist: rabbitmq-c $(RABBIT_TARGET)
 
-manylinux1: dist
-	 docker run --rm -v `pwd`:/workspace:z quay.io/pypa/manylinux1_x86_64  /workspace/build-manylinux1-wheels.sh
+manylinux2014: manylinux2014_x86_64 manylinux2014_aarch64
+
+manylinux2014_x86_64: dist
+	 docker run --rm -v `pwd`:/workspace:z quay.io/pypa/manylinux2014_x86_64  /workspace/build-manylinux1-wheels.sh
+
+qemu-user-static:
+	docker run --rm --privileged hypriot/qemu-register
+
+manylinux2014_aarch64: qemu-user-static
+	docker run --rm -v `pwd`:/workspace:z quay.io/pypa/manylinux2014_aarch64  /workspace/build-manylinux1-wheels.sh
 
 rebuild:
 	$(PYTHON) setup.py build
