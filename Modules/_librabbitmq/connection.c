@@ -1081,7 +1081,8 @@ PyRabbitMQ_ConnectionType_init(PyRabbitMQ_Connection *self,
     self->virtual_host = PyMem_Malloc(strlen(virtual_host) + 1);
 
     if (self->hostname == NULL || self->userid == NULL || self->password == NULL || self->virtual_host == NULL) {
-        return PyErr_NoMemory();
+        PyErr_NoMemory();
+        return 0;
     }
 
     strcpy(self->hostname, hostname);
