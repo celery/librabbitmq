@@ -7,10 +7,10 @@
 
 #include <amqp.h>
 #include <amqp_tcp_socket.h>
+#include <amqp_socket.h>
 
 #include "connection.h"
 #include "distmeta.h"
-#include "_amqstate.h"
 
 #define PYRABBITMQ_CONNECTION_ERROR 0x10
 #define PYRABBITMQ_CHANNEL_ERROR 0x20
