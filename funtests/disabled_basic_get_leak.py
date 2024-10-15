@@ -20,4 +20,3 @@ for i in xrange(10000):
     if not i % 1000:
         print(i)
         os.system('sh -c "ps auxww | grep %d | grep -v grep "' % os.getpid())
-
