@@ -1,0 +1,24 @@
+name: pip_install_librabbitmq
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+jobs:
+  pip_install_librabbitmq:
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - librabbitmq
+          - git+https://github.com/celery/librabbitmq.git
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+        allow-prereleases: true
+    - run: pip install --upgrade pip
+    - run: pip install build setuptools>=75.1.0 wheel ${{ matrix.module }}
