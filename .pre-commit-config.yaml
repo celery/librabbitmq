@@ -1,0 +1,19 @@
+# Learn more about this config here: https://pre-commit.com/
+
+# To enable these pre-commit hooks run:
+# `brew install pre-commit` or `python3 -m pip install pre-commit`
+# Then in the project root directory run `pre-commit install`
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # - id: check-builtin-literals
+      # - id: check-executables-have-shebangs
+      # - id: check-shebang-scripts-are-executable
+      # - id: check-toml
+      # - id: check-yaml
+      # - id: detect-private-key
+      - id: end-of-file-fixer
+      # - id: mixed-line-ending
+      # - id: trailing-whitespace
