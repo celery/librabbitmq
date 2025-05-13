@@ -5,8 +5,14 @@
 :Version: 2.0.0
 :Download: http://pypi.python.org/pypi/librabbitmq/
 :Code: http://github.com/celery/librabbitmq/
+:DeepWiki: |deepwiki|
 :Keywords: rabbitmq, amqp, messaging, librabbitmq, rabbitmq-c, python,
            kombu, celery
+
+.. |deepwiki| image:: https://devin.ai/assets/deepwiki-badge.png
+    :alt: Ask http://DeepWiki.com
+    :target: https://deepwiki.com/celery/librabbitmq
+    :width: 125px
 
 .. contents::
     :local:
