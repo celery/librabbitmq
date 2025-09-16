@@ -192,12 +192,8 @@ def find_cmake():
     return ""
 
 
-if sys.version_info[0] < 3:
-    with open(os.path.join(BASE_PATH, 'README.rst'), 'U') as f:
-        long_description = f.read()
-else:
-    with open(os.path.join(BASE_PATH, 'README.rst')) as f:
-        long_description = f.read()
+with open(os.path.join(BASE_PATH, 'README.rst')) as f:
+    long_description = f.read()
 
 distmeta = open(PYCP('distmeta.h')).read().strip().splitlines()
 distmeta = [item.split('\"')[1] for item in distmeta]
