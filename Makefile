@@ -2,7 +2,7 @@
 RABBIT_DIR=rabbitmq-c
 RABBIT_DIST=librabbitmq
 
-# Distribuition tools
+# Distribution tools
 PYTHON=python
 
 all: build manylinux2014
